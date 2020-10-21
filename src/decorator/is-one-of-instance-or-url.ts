@@ -1,0 +1,40 @@
+import { buildMessage, isURL, ValidateBy, ValidationOptions } from "class-validator";
+import { Constructor } from "../util/constructor";
+import { isOneOfInstance } from "./is-one-of-instance";
+
+export const IS_ONE_OF_INSTANCE_OR_URL = 'isOneOfInstanceOrUrl';
+
+export function isOneOfInstanceOrUrl(object: unknown, targetTypeConstructors: Constructor[]) {
+  if (typeof object === 'string') {
+    return isURL(object);
+  }
+  else {
+    return isOneOfInstance(object, targetTypeConstructors);
+  }
+}
+
+/**
+ * Checks if the value is an instance of the specified object.
+ */
+export function IsOneOfInstanceOrUrl(
+  targetType: Constructor|Constructor[],
+  validationOptions?: ValidationOptions
+): PropertyDecorator {
+  return ValidateBy(
+    {
+      name: IS_ONE_OF_INSTANCE_OR_URL,
+      constraints: [targetType],
+      validator: {
+        validate: (value, args): boolean => isOneOfInstance(value, Array.isArray(args?.constraints[0]) ? args?.constraints[0] as Constructor[]: [args?.constraints[0]]),
+        defaultMessage: buildMessage((eachPrefix, args) => {
+          if (args?.constraints[0]) {
+            return eachPrefix + `$property must be an instance of ${args?.constraints[0].name as string}`;
+          } else {
+            return eachPrefix + `${IS_ONE_OF_INSTANCE_OR_URL} decorator expects and object as value, but got falsy value.`;
+          }
+        }, validationOptions),
+      },
+    },
+    validationOptions
+  );
+}
