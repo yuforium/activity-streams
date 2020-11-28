@@ -4,6 +4,7 @@
   "description": "Activity Streams definitions with validation using class-validator and class-transformer",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "sideEffects": false,
   "scripts": {
     "test": "jest",
     "coverage": "jest --coverage",
