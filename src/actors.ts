@@ -21,4 +21,4 @@ export class Service extends Actor {
 
 }
 
-[Application, Group, Organization, Person, Service].forEach((constructor: Constructor) => ActivityStreams.register(constructor));
+[Application, Group, Organization, Person, Service].forEach((constructor: Constructor<Actor>) => ActivityStreams.register(constructor));

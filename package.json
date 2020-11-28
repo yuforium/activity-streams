@@ -1,17 +1,17 @@
 {
   "name": "@yuforium/activity-streams-validator",
   "version": "0.0.1",
-  "description": "",
+  "description": "Activity Streams definitions with validation using class-validator and class-transformer",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "test": "jest",
     "coverage": "jest --coverage",
     "build": "tsc",
-    "prepublish": "npm run build"
+    "prepare": "npm run build"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "Chris Moser",
+  "license": "MIT",
   "dependencies": {
     "class-transformer": "^0.3.1",
     "class-validator": "^0.12.2",
@@ -23,5 +23,20 @@
     "source-map-support": "^0.5.19",
     "ts-jest": "^26.4.1",
     "typescript": "^4.0.3"
-  }
+  },
+  "directories": {
+    "test": "tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yuforium/activity-streams-validator.git"
+  },
+  "keywords": [
+    "activity",
+    "streams"
+  ],
+  "bugs": {
+    "url": "https://github.com/yuforium/activity-streams-validator/issues"
+  },
+  "homepage": "https://github.com/yuforium/activity-streams-validator#readme"
 }

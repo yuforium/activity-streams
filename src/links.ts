@@ -23,4 +23,4 @@ export class Mention extends Link {
 
 }
 
-[Link, Mention].forEach((constructor: Constructor) => ActivityStreams.register);
+[Link, Mention].forEach((constructor: Constructor<ActivityStreams.StreamLink>) => ActivityStreams.register);

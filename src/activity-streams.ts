@@ -5,8 +5,11 @@ import { IsOneOfInstanceOrUrl } from "./decorator/is-one-of-instance-or-url";
 import { Constructor } from "./util/constructor";
 
 export namespace ActivityStreams {
+  export class StreamRoot {
+  }
+
   type ContentMap = {[key: string]: string}[];
-  type ConstructorMap = {[key: string]: Constructor};
+  type ConstructorMap = {[key: string]: Constructor<StreamRoot>};
 
   export const types = {
     all: {} as ConstructorMap,
@@ -50,8 +53,6 @@ export namespace ActivityStreams {
     }
   }
 
-  export class StreamRoot {
-  }
 
   export class StreamLink extends StreamRoot {
     @IsString()
@@ -93,6 +94,12 @@ export namespace ActivityStreams {
   }
 
   export class StreamObject extends StreamRoot {
+    @IsString()
+    @IsUrl()
+    @IsOptional()
+    @IsNotEmpty()
+    id?: string;
+
     @IsString()
     @IsNotEmpty()
     type: string;
@@ -332,12 +339,16 @@ export namespace ActivityStreams {
 
   export abstract class IntransitiveActivity extends StreamActivity { }
 
-  export function register(constructor: Constructor, asType?: string): void {
+  export function register<T extends StreamRoot>(constructor: Constructor<T>, asType?: string, debug?: boolean): void {
     if (!StreamRoot.isPrototypeOf(constructor)) {
       throw new Error('Constructor must extend an ActivityStream class');
     }
       
     const type = asType || constructor.name;
+
+    if (debug) {
+      console.log('Registering ' + type);
+    }
   
     types.all[type] = constructor;
   
