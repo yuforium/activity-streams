@@ -20,15 +20,16 @@ export function IsOneOfInstanceOrUrl(
   targetType: Constructor<any>|Constructor<any>[],
   validationOptions?: ValidationOptions
 ): PropertyDecorator {
+  const targetTypes = Array.isArray(targetType) ? targetType : [targetType];
   return ValidateBy(
     {
       name: IS_ONE_OF_INSTANCE_OR_URL,
-      constraints: [targetType],
+      constraints: targetTypes,
       validator: {
         validate: (value, args): boolean => isOneOfInstance(value, Array.isArray(args?.constraints[0]) ? args?.constraints[0] as Constructor<any>[]: [args?.constraints[0]]),
         defaultMessage: buildMessage((eachPrefix, args) => {
           if (args?.constraints[0]) {
-            return eachPrefix + `$property must be an instance of ${args?.constraints[0].name as string}`;
+            return eachPrefix + `$property must be an instance of ${targetTypes.map(t => t.name).join('|')}`;
           } else {
             return eachPrefix + `${IS_ONE_OF_INSTANCE_OR_URL} decorator expects and object as value, but got falsy value.`;
           }

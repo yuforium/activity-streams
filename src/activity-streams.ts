@@ -8,7 +8,7 @@ export namespace ActivityStreams {
   export class StreamRoot {
   }
 
-  type ContentMap = {[key: string]: string}[];
+  export type ContentMap = {[key: string]: string}[];
   type ConstructorMap = {[key: string]: Constructor<StreamRoot>};
 
   export const types = {
@@ -52,7 +52,6 @@ export namespace ActivityStreams {
       return value;
     }
   }
-
 
   export class StreamLink extends StreamRoot {
     @IsString()
@@ -104,11 +103,6 @@ export namespace ActivityStreams {
     @IsNotEmpty()
     type: string;
 
-    constructor() {
-      super();
-      this.type = this.constructor.name;
-    }
-
     /**
      * Identifies a resource attached or related to an object that potentially requires special handling. The intent is to provide a model that is at least semantically similar to attachments in email.
      * https://www.w3.org/ns/activitystreams#attachment
@@ -129,7 +123,7 @@ export namespace ActivityStreams {
 
     /**
      * Identifies one or more entities that represent the total population of entities for which the object can considered to be relevant.
-     * 
+     *
      * https://www.w3.org/ns/activitystreams#audience
      */
     @Transform(transform())
@@ -141,23 +135,23 @@ export namespace ActivityStreams {
      * The content or textual representation of the Object encoded as a JSON string. By default, the value of content is HTML. The mediaType property can be used in the object to indicate a different content type.
      *
      * The content may be expressed using multiple language-tagged values.
-     * 
+     *
      * https://www.w3.org/ns/activitystreams#content
      */
     @IsString()
-    @IsOptional()
+    //@IsOptional()
     content?: string;
 
     /**
      * Identifies the context within which the object exists or an activity was performed.
      *
      * The notion of "context" used is intentionally vague. The intended function is to serve as a means of grouping objects and activities that share a common originating context or purpose. An example could be all activities relating to a common project or event.
-     * 
+     *
      * https://www.w3.org/ns/activitystreams#context
      */
     @Transform(transform())
     @IsOneOfInstanceOrUrl([StreamObject, StreamLink])
-    @IsOptional()
+    //@IsOptional()
     context?: StreamRoot|StreamRoot[];
 
     @IsObject()
@@ -165,7 +159,7 @@ export namespace ActivityStreams {
     contentMap?: ContentMap;
 
     @IsString()
-    @IsOptional()
+    //@IsOptional()
     name?: string|string[];
 
     @IsObject()
@@ -224,7 +218,7 @@ export namespace ActivityStreams {
 
     /**
      * One or more "tags" that have been associated with an objects. A tag can be any kind of Object. The key difference between attachment and tag is that the former implies association by inclusion, while the latter implies associated by reference.
-     * 
+     *
      * https://www.w3.org/ns/activitystreams#tag
      */
     @IsOptional()
@@ -241,7 +235,7 @@ export namespace ActivityStreams {
     @Type(() => StreamLink)
     url?: string|StreamLink|(string|StreamLink)[];
 
-    @IsOptional()
+    // @IsOptional()
     // @Type(() => Root, {
     //   discriminator: {
     //     property: 'type',
@@ -343,15 +337,15 @@ export namespace ActivityStreams {
     if (!StreamRoot.isPrototypeOf(constructor)) {
       throw new Error('Constructor must extend an ActivityStream class');
     }
-      
+
     const type = asType || constructor.name;
 
     if (debug) {
       console.log('Registering ' + type);
     }
-  
+
     types.all[type] = constructor;
-  
+
     if (ActivityStreams.StreamObject.isPrototypeOf(constructor)) {
       types.Object[type] = constructor;
     }
@@ -363,7 +357,7 @@ export namespace ActivityStreams {
     if (StreamImage.isPrototypeOf(constructor)) {
       types.Image[type] = constructor;
     }
-  
+
     if (StreamActivity.isPrototypeOf(constructor)) {
       types.Activity[type] = constructor;
     }
