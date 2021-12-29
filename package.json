@@ -1,6 +1,6 @@
 {
   "name": "@yuforium/activity-streams-validator",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Activity Streams definitions with validation using class-validator and class-transformer",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -14,12 +14,10 @@
   },
   "author": "Chris Moser",
   "license": "MIT",
-  "dependencies": {
-    "class-transformer": "^0.3.1",
-    "reflect-metadata": "^0.1.13"
-  },
   "peerDependencies": {
-    "class-validator": "^0.12.2"
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.12.2",
+    "reflect-metadata": "^0.1.13"
   },
   "devDependencies": {
     "@types/jest": "^26.0.15",
