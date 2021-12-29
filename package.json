@@ -1,6 +1,6 @@
 {
   "name": "@yuforium/activity-streams-validator",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Activity Streams definitions with validation using class-validator and class-transformer",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -16,7 +16,7 @@
   "license": "MIT",
   "peerDependencies": {
     "class-transformer": "^0.5.1",
-    "class-validator": "^0.12.2",
+    "class-validator": "^0.13.2",
     "reflect-metadata": "^0.1.13"
   },
   "devDependencies": {
