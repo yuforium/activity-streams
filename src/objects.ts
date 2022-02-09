@@ -1,17 +1,21 @@
-import { Transform, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import { Equals, IsInt, IsNumber, IsOptional, IsRFC3339, IsString, Max, Min } from 'class-validator';
 import { ActivityStreams } from '.';
 
 export class Actor extends ActivityStreams.StreamObject {
+  type = 'Actor';
 }
 
 export class Article extends ActivityStreams.StreamObject {
+  type = 'Article';
 }
 
 export class Audio extends ActivityStreams.StreamObject {
+  type = 'Audio';
 }
 
 export class Collection extends ActivityStreams.StreamObject {
+  type = 'Collection';
   @IsOptional()
   @IsNumber()
   @IsInt()
@@ -55,12 +59,12 @@ export class Collection extends ActivityStreams.StreamObject {
   last?: CollectionPage|ActivityStreams.StreamLink;
 
   @IsOptional()
-  // @Type(() => ActivityStreams.Object, {
-  //   discriminator: {
-  //     property: 'type',
-  //     subTypes: ActivityStreams.types
-  //   }
-  // })
+  @Type(() => ActivityStreams.StreamObject, {
+    discriminator: {
+      property: 'type',
+      subTypes: Object.entries(ActivityStreams.Objects).map(([name, value]) => ({name, value}))
+    }
+  })
   items: ActivityStreams.StreamRoot[];
 
   @IsOptional()
@@ -73,7 +77,13 @@ export class Collection extends ActivityStreams.StreamObject {
   orderedItems: ActivityStreams.StreamObject[];
 }
 
+export class OrderedCollection extends Collection {
+  type = 'OrderedCollection';
+}
+
 export class CollectionPage extends Collection {
+  type = 'CollectionPage';
+
   @IsOptional()
   @Type(() => ActivityStreams.StreamObject, {
     discriminator: {
@@ -111,22 +121,34 @@ export class CollectionPage extends Collection {
   prev?: string|CollectionPage|ActivityStreams.StreamLink
 }
 
+export class OrderedCollectionPage extends CollectionPage {
+  @Expose()
+  type = 'OrderedCollectionPage';
+}
+
 export class Document extends ActivityStreams.StreamObject {
+  type = 'Document';
 }
 
 export class Event extends ActivityStreams.StreamObject {
+  type = 'Event';
 }
 
 export class Image extends ActivityStreams.StreamImage {
+  type = 'Image';
 }
 
 export class Note extends ActivityStreams.StreamObject {
+  type = 'Note';
 }
 
 export class Page extends ActivityStreams.StreamObject {
+  type = 'Page';
 }
 
 export class Place extends ActivityStreams.StreamObject {
+  type = 'Place';
+
   @IsOptional()
   @IsNumber()
   @Min(0)
@@ -156,26 +178,31 @@ export class Place extends ActivityStreams.StreamObject {
 }
 
 export class Profile extends ActivityStreams.StreamObject {
-  @Transform(ActivityStreams.transform('Object', {functional: true}))
+  type = 'Profile';
+  // @Transform(ActivityStreams.transform('Object', {functional: true}))
   @IsOptional()
   describes?: ActivityStreams.StreamRoot
 }
 
 export class Relationship extends ActivityStreams.StreamObject {
-  @Transform(ActivityStreams.transform('Object', {functional: true}))
+  type = 'Relationship';
+
+  // @Transform(ActivityStreams.transform('Object', {functional: true}))
   @IsOptional()
   subject?: ActivityStreams.StreamRoot;
 
-  @Transform(ActivityStreams.transform('Object', {functional: true}))
+  // @Transform(ActivityStreams.transform('Object', {functional: true}))
   @IsOptional()
   object?: ActivityStreams.StreamRoot;
 
-  @Transform(ActivityStreams.transform('Object', {functional: true}))
+  // @Transform(ActivityStreams.transform('Object', {functional: true}))
   @IsOptional()
   relationship?: ActivityStreams.StreamRoot;
 }
 
 export class Tombstone extends ActivityStreams.StreamObject {
+  type = 'Tombstone';
+
   @IsOptional()
   @IsString()
   formerType?: string;
@@ -187,6 +214,7 @@ export class Tombstone extends ActivityStreams.StreamObject {
 }
 
 export class Video extends Document {
+  type = 'Video';
 }
 
 const objects = {Actor, Article, Audio, Collection, CollectionPage, Document, Event, Image, Note, Page, Place, Profile, Relationship, Tombstone, Video};

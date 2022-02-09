@@ -1,11 +1,18 @@
-import { plainToClass, Transform, Type } from "class-transformer";
-import { isArray, IsInstance, IsInt, IsMimeType, IsNotEmpty, IsNumber, IsObject, IsOptional, IsPositive, IsRFC3339, IsString, IsUrl } from "class-validator";
+import { Exclude, Expose, plainToClass, Transform, Type } from "class-transformer";
+import { IsInt, IsMimeType, IsNotEmpty, IsNumber, IsObject, IsPositive, IsRFC3339, IsString, IsUrl, ValidateIf, ValidateNested } from "class-validator";
 import { Actor, Collection } from '.';
 import { IsOneOfInstanceOrUrl } from "./decorator/is-one-of-instance-or-url";
+import { IsOptional } from "./decorator/is-optional";
 import { Constructor } from "./util/constructor";
 
+/**
+ * Base collection of ActivityStreams objects.
+ */
 export namespace ActivityStreams {
   export class StreamRoot {
+    public static factory<T>(this: Constructor<T>, params: any = {}): T {
+      return Object.assign(new this(), params);
+    }
   }
 
   export type ContentMap = {[key: string]: string}[];
@@ -54,6 +61,16 @@ export namespace ActivityStreams {
   }
 
   export class StreamLink extends StreamRoot {
+    @Exclude()
+    exportAsString: boolean = false;
+
+    toString() {
+      if (this.id) {
+        return this.id;
+      }
+      throw new Error('conversion to string not possible without id');
+    }
+
     @IsString()
     @IsUrl()
     href: string;
@@ -97,28 +114,32 @@ export namespace ActivityStreams {
     @IsUrl()
     @IsOptional()
     @IsNotEmpty()
+    @Expose()
     id?: string;
 
     @IsString()
     @IsNotEmpty()
-    type: string;
+    @Expose()
+    readonly type: string = 'Object';
 
     /**
      * Identifies a resource attached or related to an object that potentially requires special handling. The intent is to provide a model that is at least semantically similar to attachments in email.
      * https://www.w3.org/ns/activitystreams#attachment
      */
-    @Transform(transform())
+    // @Transform(transform())
     @IsOptional()
     @IsOneOfInstanceOrUrl([StreamObject, StreamLink])
+    @Expose()
     public attachment?: StreamRoot|string|(StreamRoot|string)[];
 
     /**
      * Identifies one or more entities to which this object is attributed. The attributed entities might not be Actors. For instance, an object might be attributed to the completion of another activity.
      * https://www.w3.org/ns/activitystreams#attributedTo
      */
-    @Transform(transform())
+    // @Transform(transform())
     @IsOneOfInstanceOrUrl([StreamObject, StreamLink])
     @IsOptional()
+    @Expose()
     public attributedTo?: StreamRoot|string|(StreamRoot|string)[];
 
     /**
@@ -126,9 +147,10 @@ export namespace ActivityStreams {
      *
      * https://www.w3.org/ns/activitystreams#audience
      */
-    @Transform(transform())
+    // @Transform(transform())
     @IsOneOfInstanceOrUrl([StreamObject, StreamLink])
     @IsOptional()
+    @Expose()
     audience?: StreamRoot|string|(StreamRoot|string)[];
 
     /**
@@ -139,7 +161,17 @@ export namespace ActivityStreams {
      * https://www.w3.org/ns/activitystreams#content
      */
     @IsString()
-    //@IsOptional()
+    @Expose()
+    @IsOptional()
+    // @ValidateIf((o: StreamObject) => {
+    //   console.log("metadata key", Reflect.getMetadata(isRequiredMetadataKey, o, 'content'));
+    //   console.log('this is the first decorator');
+    //   return true;
+    // })
+    // @ValidateIf((o: StreamObject) => {
+    //   console.log('this is the second decorator');
+    //   return true;
+    // })
     content?: string;
 
     /**
@@ -149,71 +181,119 @@ export namespace ActivityStreams {
      *
      * https://www.w3.org/ns/activitystreams#context
      */
-    @Transform(transform())
+    // @Transform(transform())
     @IsOneOfInstanceOrUrl([StreamObject, StreamLink])
-    //@IsOptional()
+    @IsOptional()
+    @Expose()
     context?: StreamRoot|StreamRoot[];
 
+    /**
+     * The content or textual representation of the Object encoded as a JSON string. By default, the value of content is HTML. The mediaType property can be used in the object to indicate a different content type.
+     *
+     * The content may be expressed using multiple language-tagged values.
+     *
+     * https://www.w3.org/ns/activitystreams#content
+     */
     @IsObject()
     @IsOptional()
+    @Expose()
     contentMap?: ContentMap;
 
+    /**
+     * A simple, human-readable, plain-text name for the object. HTML markup must not be included. The name may be expressed using multiple language-tagged values.
+     *
+     * https://www.w3.org/ns/activitystreams#name
+     */
     @IsString()
     //@IsOptional()
+    @Expose()
     name?: string|string[];
 
+    /**
+     * A simple, human-readable, plain-text name for the object. HTML markup must not be included. The name may be expressed using multiple language-tagged values.
+     *
+     * https://www.w3.org/ns/activitystreams#name
+     */
     @IsObject()
     @IsOptional()
+    @Expose()
     nameMap?: ContentMap|ContentMap[];
 
     @IsOptional()
     @IsString()
     @IsRFC3339()
+    @Expose()
     endTime?: string;
 
     @IsOptional()
-    @Transform(transform())
+    // @Transform(transform())
+    @Expose()
     generator?: string|StreamRoot|(string|StreamRoot)[];
 
     @IsOptional()
-    @Transform(transform(['Image', 'Link']))
+    // @Transform(transform(['Image', 'Link']))
+    @Expose()
     icon?: string|StreamLink|StreamImage|(string|StreamLink|StreamImage)[];
 
     @IsOptional()
-    @Transform(transform(['Image', 'Link']))
+    @Expose()
+    // @Transform(transform(['Image', 'Link']))
     image?: string|StreamLink|StreamImage|(string|StreamLink|StreamImage)[];
 
     @IsOptional()
-    @Transform(transform())
+    // @Transform(transform())
+    @Expose()
     inReplyTo?: string|StreamRoot|(string|StreamRoot)[];
 
     @IsOptional()
-    @Transform(transform())
+    // @Transform(transform())
+    @Expose()
     location?: string|StreamRoot|(string|StreamRoot)[];
 
     @IsOptional()
-    @Transform(transform())
+    // @Transform(transform())
+    @Expose()
     preview?: string|StreamRoot|(string|StreamRoot)[];
 
+    /**
+     * The date and time at which the object was published
+     *
+     * ```json
+     * {
+     *   "@context": "https://www.w3.org/ns/activitystreams",
+     *   "summary": "A simple note",
+     *   "type": "Note",
+     *   "content": "Fish swim.",
+     *   "published": "2014-12-12T12:12:12Z"
+     * }
+     * ```
+     *
+     * https://www.w3.org/ns/activitystreams#published
+     */
     @IsOptional()
     @IsString()
     @IsRFC3339()
+    @Expose()
     published?: string;
 
     @IsOptional()
     @Type(() => Collection)
+    @Expose()
     replies?: Collection;
 
     @IsOptional()
     @IsString()
     @IsRFC3339()
+    @Expose()
     startTime?: string;
 
     @IsOptional()
+    @Expose()
     summary?: string|string[];
 
     @IsObject()
     @IsOptional()
+    @Expose()
     summaryMap?: ContentMap|ContentMap[];
 
     /**
@@ -222,69 +302,83 @@ export namespace ActivityStreams {
      * https://www.w3.org/ns/activitystreams#tag
      */
     @IsOptional()
-    @Transform(transform())
+    // @Transform(transform())
     @IsOneOfInstanceOrUrl([StreamObject, StreamLink])
+    @Expose()
     tag?: StreamRoot|string|(StreamRoot|string)[];
 
     @IsOptional()
     @IsString()
     @IsRFC3339()
+    @Expose()
     updated?: string;
 
     @IsOptional()
     @Type(() => StreamLink)
+    @Expose()
     url?: string|StreamLink|(string|StreamLink)[];
 
-    // @IsOptional()
+    @IsOptional()
+    @IsString({each: true})
+    // @IsUrl()
     // @Type(() => Root, {
     //   discriminator: {
     //     property: 'type',
     //     subTypes: types
     //   }
     // })
+    @Expose()
     to?: string|StreamLink|StreamObject|(string|StreamLink|StreamObject)[];
 
     @IsOptional()
+    @IsString({each: true})
     // @Type(() => Root, {
     //   discriminator: {
     //     property: 'type',
     //     subTypes: types
     //   }
     // })
+    @Expose()
     bto?: string|StreamLink|StreamObject|(string|StreamLink|StreamObject)[];
 
     @IsOptional()
+    @IsString({each: true})
     // @Type(() => Root, {
     //   discriminator: {
     //     property: 'type',
     //     subTypes: types
     //   }
     // })
+    @Expose()
     cc?: string|StreamLink|StreamObject|(string|StreamLink|StreamObject)[];
 
     @IsOptional()
+    @IsString({each: true})
     // @Type(() => Root, {
     //   discriminator: {
     //     property: 'type',
     //     subTypes: types
     //   }
     // })
+    @Expose()
     bcc?: string|StreamLink|StreamObject|(string|StreamLink|StreamObject)[];
 
     @IsOptional()
     @IsString()
     @IsMimeType()
+    @Expose()
     mediaType?: string;
 
     @IsOptional()
     @IsString()
+    @Expose()
     duration?: string;
   }
 
   export abstract class StreamActivity extends StreamObject {
     @Type(() => Actor)
     @IsOptional()
-    actor?: Actor;
+    actor?: string | Actor;
 
     // @Type(() => Root, {
     //   discriminator: {
@@ -323,9 +417,21 @@ export namespace ActivityStreams {
     instrument?: StreamLink|StreamObject
   }
 
-  export abstract class Activity extends StreamActivity {
-    @IsOptional()
-    @Transform(transform('Object'))
+
+  export class Activity extends StreamActivity {
+    @Expose()
+    id: string;
+
+    @Expose()
+    @Transform(({value}: any) => {
+      if (typeof value === 'string') {
+        return value;
+      }
+      else if (typeof value === 'object' && !(value instanceof StreamObject) && types.Object[value.type]) {
+        return plainToClass(types.Object[value.type], value, {excludeExtraneousValues: true});
+      }
+      return value;
+    })
     object?: StreamObject;
   }
 
