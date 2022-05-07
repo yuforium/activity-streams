@@ -60,10 +60,6 @@ export class Collection extends ActivityStreams.StreamObject {
 
   @IsOptional()
   @Type(() => ActivityStreams.StreamObject, {
-    discriminator: {
-      property: 'type',
-      subTypes: Object.entries(ActivityStreams.Objects).map(([name, value]) => ({name, value}))
-    }
   })
   items: ActivityStreams.StreamRoot[];
 
@@ -220,3 +216,4 @@ export class Video extends Document {
 const objects = {Actor, Article, Audio, Collection, CollectionPage, Document, Event, Image, Note, Page, Place, Profile, Relationship, Tombstone, Video};
 
 Object.values(objects).forEach(obj => ActivityStreams.register(obj));
+ActivityStreams.register(ActivityStreams.StreamObject, 'Object');

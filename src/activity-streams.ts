@@ -1,5 +1,5 @@
-import { Exclude, Expose, plainToClass, Transform, Type } from "class-transformer";
-import { IsInt, IsMimeType, IsNotEmpty, IsNumber, IsObject, IsPositive, IsRFC3339, IsString, IsUrl, ValidateIf, ValidateNested } from "class-validator";
+import { Exclude, Expose, plainToClass, Transform, TransformFnParams, Type } from "class-transformer";
+import { ArrayMinSize, IsInt, IsMimeType, IsNotEmpty, IsNumber, IsObject, IsPositive, IsRFC3339, IsString, IsUrl, ValidateIf, ValidateNested } from "class-validator";
 import { Actor, Collection } from '.';
 import { IsOneOfInstanceOrUrl } from "./decorator/is-one-of-instance-or-url";
 import { IsOptional } from "./decorator/is-optional";
@@ -32,7 +32,12 @@ export namespace ActivityStreams {
   export const Links = types.Link;
   export const Activities = types.Activity;
 
-  export function transform(type?: 'Object'|'Link'|'Image'|('Object'|'Link'|'Image')[], options: {functional: boolean} = {functional: false}) {
+  let _transform = transformer();
+  export const transform = (value: any) => {
+    return _transform({value} as TransformFnParams)
+  }
+
+  export function transformer(type?: 'Object'|'Link'|'Image'|('Object'|'Link'|'Image')[], options: {functional: boolean} = {functional: false}) {
     let available: ConstructorMap;
 
     if (Array.isArray(type)) {
@@ -45,18 +50,18 @@ export namespace ActivityStreams {
       available = type ? types[type as 'Object'|'Link'|'Image'] : types.all;
     }
 
-    return (value: any, obj: any, type: any): any => {
+    return (params: TransformFnParams) => {
       let cls;
 
-      if (!options.functional && Array.isArray(value)) {
-        return value.map(v => transform(type)(v, obj, type));
+      if (!options.functional && Array.isArray(params.value)) {
+        return params.value.map(v => ({...params, value: v}));
       }
 
-      if (typeof value === 'object' && (cls = available[value.type])) {
-        return plainToClass(cls, value);
+      if (typeof params.value === 'object' && (cls = available[params.value.type])) {
+        return plainToClass(cls, params.value);
       }
 
-      return value;
+      return params.value;
     }
   }
 
@@ -117,16 +122,16 @@ export namespace ActivityStreams {
     @Expose()
     id?: string;
 
-    @IsString()
+    @IsString({each: true})
     @IsNotEmpty()
     @Expose()
-    readonly type: string = 'Object';
+    type: string | string[] = 'Object';
 
     /**
      * Identifies a resource attached or related to an object that potentially requires special handling. The intent is to provide a model that is at least semantically similar to attachments in email.
      * https://www.w3.org/ns/activitystreams#attachment
      */
-    // @Transform(transform())
+    @Transform(transformer())
     @IsOptional()
     @IsOneOfInstanceOrUrl([StreamObject, StreamLink])
     @Expose()
@@ -163,6 +168,7 @@ export namespace ActivityStreams {
     @IsString()
     @Expose()
     @IsOptional()
+    // @IsNotFunctional();
     // @ValidateIf((o: StreamObject) => {
     //   console.log("metadata key", Reflect.getMetadata(isRequiredMetadataKey, o, 'content'));
     //   console.log('this is the first decorator');
@@ -172,7 +178,7 @@ export namespace ActivityStreams {
     //   console.log('this is the second decorator');
     //   return true;
     // })
-    content?: string;
+    content?: string | string[];
 
     /**
      * Identifies the context within which the object exists or an activity was performed.
@@ -205,7 +211,7 @@ export namespace ActivityStreams {
      * https://www.w3.org/ns/activitystreams#name
      */
     @IsString()
-    //@IsOptional()
+    @IsOptional()
     @Expose()
     name?: string|string[];
 
@@ -468,4 +474,8 @@ export namespace ActivityStreams {
       types.Activity[type] = constructor;
     }
   }
+
+  register(StreamObject, 'Object');
+  register(StreamLink, 'Link');
+  // register(StreamActivity, 'Activity');
 }

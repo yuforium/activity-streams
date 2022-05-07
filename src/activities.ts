@@ -2,6 +2,10 @@ import { Expose, Transform, Type } from "class-transformer";
 import { IsOptional } from "class-validator";
 import { ActivityStreams } from "./activity-streams";
 
+export abstract class Activity extends ActivityStreams.Activity {
+
+}
+
 export class Accept extends ActivityStreams.Activity {
   type = 'Accept';
 }

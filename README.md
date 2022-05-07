@@ -10,16 +10,23 @@ npm install @yuforium/activity-streams-validator class-validator class-transform
 Use built in classes to do validation using class-validator:
 
 ```typescript
+import 'reflect-metadata';
 import { Note } from '@yuforium/activity-streams-validator';
 import { validate } from 'class-validator';
 
 const note = new Note();
 note.id = 'https://yuforium.com/users/chris/note-123';
 
-validate(note); // works!
+(async () => {
+  let errors = await validate(note);
 
-note.content = 5; // can't be number
-validate(note); // fails!
+  if (errors.length > 0) {
+    console.log('validation failed');
+  }
+  else {
+    console.log('validation ok');
+  }
+})();
 ```
 
 ## Requiring Optional Fields
