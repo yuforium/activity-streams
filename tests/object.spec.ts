@@ -1,24 +1,28 @@
 import { plainToClass } from 'class-transformer';
 import 'reflect-metadata';
-import { ActivityStreams, Actor } from '../src';
+import { ActivityStreams, Note } from '../src';
 
-const toASObject = ActivityStreams.transform("Object");
+// const toASObject = ActivityStreams.transform("Object");
+
+describe('default object transformations', () => {
+  it('should transform a simple object', () => {
+    const obj = ActivityStreams.transform({
+      type: 'Note'
+    });
+
+    expect(obj).toBeInstanceOf(Note);
+  });
+});
 
 describe('object transformation', () => {
   it('plain object transforms actor', () => {
-    let json: any = {
-      type: 'Object',
-      attachment: {
-        type: 'Actor',
-        name: 'Test Actor'
-      }
+    let value: any = {
+      type: 'Note'
     };
 
-    let obj = ActivityStreams.transform(json);
+    let obj = ActivityStreams.transform(value);
 
-    console.log('the obje is', obj);
-
-    expect(obj.attachment).toBeInstanceOf(Actor);
+    expect(obj).toBeInstanceOf(Note);
 
     // json['attachment'] = [
     //   {

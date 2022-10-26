@@ -13,31 +13,3 @@ export function IsOptional(validationOptions?: ValidationOptions) {
     }, validationOptions)(prototype, propertyKey);
   }
 }
-/**
- * Checks if value is missing and if so, ignores all validators.
- */
-// export function OldIsOptional(validationOptions?: ValidationOptions) {
-//   return function(object: Object, propertyName: string) {
-//     console.log('isoptional on ' + propertyName);
-//     if (propertyName === 'content') {
-//       console.log('content is optional');
-//     }
-//     const args: ValidationMetadataArgs = {
-//       type: ValidationTypes.CONDITIONAL_VALIDATION,
-//       target: object.constructor,
-//       propertyName,
-//       constraints: [
-//         (object: any, value: any): boolean => {
-//           console.log('checking constraints');
-//           // does this property exist?
-//           if (Reflect.getMetadata(isRequiredMetadataKey, object, propertyName)) {
-//             return true;
-//           }
-//           return object[propertyName] !== null && object[propertyName] !== undefined;
-//         }
-//       ],
-//       validationOptions
-//     };
-//     getMetadataStorage().addValidationMetadata(new ValidationMetadata(args));
-//   }
-// }

@@ -4,3 +4,4 @@ export * from './activities';
 export * from './actors';
 export * from './links';
 export * from './decorator/is-required';
+export * from './interfaces';

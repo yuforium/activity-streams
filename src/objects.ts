@@ -1,150 +1,28 @@
-import { Expose, Transform, Type } from 'class-transformer';
-import { Equals, IsInt, IsNumber, IsOptional, IsRFC3339, IsString, Max, Min } from 'class-validator';
+import { Expose } from 'class-transformer';
+import { IsNumber, IsOptional, IsRFC3339, IsString, Max, Min } from 'class-validator';
 import { ActivityStreams } from '.';
+import { ASCollection } from './interfaces/as-collection.interface';
+import { ASCollectionPage } from './interfaces/as-collection-page.interface';
+import { ASObject, ASObjectOrLink } from './interfaces/as-object.interface';
+import { Constructor } from './util/constructor';
 
-export class Actor extends ActivityStreams.StreamObject {
-  type = 'Actor';
-}
+class BaseObject extends ActivityStreams.object('Object') {}; // registers this as type "Object" (name can't be used as class name however)
 
-export class Article extends ActivityStreams.StreamObject {
-  type = 'Article';
-}
+export class Actor extends ActivityStreams.object('Actor') {};
+export class Article extends ActivityStreams.object('Article') {};
+export class Audio extends ActivityStreams.object('Audio') {};
+export class Collection extends ActivityStreams.collection('Collection') implements ASCollection {};
+export class OrderedCollection extends ActivityStreams.collection('OrderedCollection') implements ASCollection {};
+export class CollectionPage extends ActivityStreams.collectionPage('CollectionPage') implements ASCollectionPage {};
+export class OrderedCollectionPage extends ActivityStreams.collectionPage('OrderedCollectionPage') implements ASCollectionPage {};
+export class Document extends ActivityStreams.document('Document') {};
+export class Event extends ActivityStreams.object('Event') {};
+export class Image extends ActivityStreams.document('Image') {};
+export class Note extends ActivityStreams.object('Note') {};
+export class Page extends ActivityStreams.document('Page') {};
+ActivityStreams.transformer.add(Actor, Article, Audio, Collection, OrderedCollection, CollectionPage, OrderedCollectionPage, Document, Event, Image, Note, Page);
 
-export class Audio extends ActivityStreams.StreamObject {
-  type = 'Audio';
-}
-
-export class Collection extends ActivityStreams.StreamObject {
-  type = 'Collection';
-  @IsOptional()
-  @IsNumber()
-  @IsInt()
-  @Min(0)
-  totalItems?: number;
-
-  @IsOptional()
-  // @Type(() => ActivityStreams.Object, {
-  //   discriminator: {
-  //     property: 'type',
-  //     subTypes: [
-  //       {name: 'CollectionPage', value: CollectionPage},
-  //       {name: 'Link', value: ActivityStreams.Link}
-  //     ]
-  //   }
-  // })
-  current?: CollectionPage|ActivityStreams.StreamLink;
-
-  @IsOptional()
-  // @Type(() => ActivityStreams.Object, {
-  //   discriminator: {
-  //     property: 'type',
-  //     subTypes: [
-  //       {name: 'CollectionPage', value: CollectionPage},
-  //       {name: 'Link', value: ActivityStreams.Link}
-  //     ]
-  //   }
-  // })
-  first?: CollectionPage|ActivityStreams.StreamLink;
-
-  @IsOptional()
-  // @Type(() => ActivityStreams.Object, {
-  //   discriminator: {
-  //     property: 'type',
-  //     subTypes: [
-  //       {name: 'CollectionPage', value: CollectionPage},
-  //       {name: 'Link', value: ActivityStreams.Link}
-  //     ]
-  //   }
-  // })
-  last?: CollectionPage|ActivityStreams.StreamLink;
-
-  @IsOptional()
-  @Type(() => ActivityStreams.StreamObject, {
-  })
-  items: ActivityStreams.StreamRoot[];
-
-  @IsOptional()
-  // @Type(() => ActivityStreams.Object, {
-  //   discriminator: {
-  //     property: 'type',
-  //     subTypes: ActivityStreams.types
-  //   }
-  // })
-  orderedItems: ActivityStreams.StreamObject[];
-}
-
-export class OrderedCollection extends Collection {
-  type = 'OrderedCollection';
-}
-
-export class CollectionPage extends Collection {
-  type = 'CollectionPage';
-
-  @IsOptional()
-  @Type(() => ActivityStreams.StreamObject, {
-    discriminator: {
-      property: 'type',
-      subTypes: [
-        {name: 'Link', value: ActivityStreams.StreamLink},
-        {name: 'Collection', value: Collection}
-      ]
-    }
-  })
-  partOf?: string|Collection|ActivityStreams.StreamLink;
-
-  @IsOptional()
-  @Type(() => ActivityStreams.StreamObject, {
-    discriminator: {
-      property: 'type',
-      subTypes: [
-        {name: 'Link', value: ActivityStreams.StreamLink},
-        {name: 'CollectionPage', value: CollectionPage}
-      ]
-    }
-  })
-  next?: string|CollectionPage|ActivityStreams.StreamLink;
-
-  @IsOptional()
-  @Type(() => ActivityStreams.StreamRoot, {
-    discriminator: {
-      property: 'type',
-      subTypes: [
-        {name: 'Link', value: ActivityStreams.StreamLink},
-        {name: 'CollectionPage', value: CollectionPage}
-      ]
-    }
-  })
-  prev?: string|CollectionPage|ActivityStreams.StreamLink
-}
-
-export class OrderedCollectionPage extends CollectionPage {
-  @Expose()
-  type = 'OrderedCollectionPage';
-}
-
-export class Document extends ActivityStreams.StreamObject {
-  type = 'Document';
-}
-
-export class Event extends ActivityStreams.StreamObject {
-  type = 'Event';
-}
-
-export class Image extends ActivityStreams.StreamImage {
-  type = 'Image';
-}
-
-export class Note extends ActivityStreams.StreamObject {
-  type = 'Note';
-}
-
-export class Page extends ActivityStreams.StreamObject {
-  type = 'Page';
-}
-
-export class Place extends ActivityStreams.StreamObject {
-  type = 'Place';
-
+class PlaceDef {
   @IsOptional()
   @IsNumber()
   @Min(0)
@@ -172,48 +50,42 @@ export class Place extends ActivityStreams.StreamObject {
   @Min(0)
   radius?: number;
 }
+export class Place extends ActivityStreams.object('Place', PlaceDef) {};
+ActivityStreams.transformer.add(Place);
 
-export class Profile extends ActivityStreams.StreamObject {
-  type = 'Profile';
-  // @Transform(ActivityStreams.transform('Object', {functional: true}))
+class ProfileDef {
   @IsOptional()
-  describes?: ActivityStreams.StreamRoot
+  @IsString()
+  @Expose({ name: 'describes' })
+  describes?: ASObjectOrLink;
 }
+export class Profile extends ActivityStreams.object('Profile', ProfileDef) {};
+ActivityStreams.transformer.add(Profile);
 
-export class Relationship extends ActivityStreams.StreamObject {
-  type = 'Relationship';
-
-  // @Transform(ActivityStreams.transform('Object', {functional: true}))
+class RelationshipDef {
   @IsOptional()
-  subject?: ActivityStreams.StreamRoot;
+  subject?: ASObjectOrLink;
 
-  // @Transform(ActivityStreams.transform('Object', {functional: true}))
   @IsOptional()
-  object?: ActivityStreams.StreamRoot;
+  object?: ASObjectOrLink;
 
-  // @Transform(ActivityStreams.transform('Object', {functional: true}))
   @IsOptional()
-  relationship?: ActivityStreams.StreamRoot;
+  relationship?: ASObjectOrLink;
 }
+export class Relationship extends ActivityStreams.object('Relationship', RelationshipDef) {};
+ActivityStreams.transformer.add(Relationship);
 
-export class Tombstone extends ActivityStreams.StreamObject {
-  type = 'Tombstone';
-
+class TombstoneDef {
   @IsOptional()
   @IsString()
   formerType?: string;
 
   @IsOptional()
-  @IsString()
   @IsRFC3339()
   deleted?: string;
 }
+export class Tombstone extends ActivityStreams.object('Tombstone', TombstoneDef) {};
+ActivityStreams.transformer.add(Tombstone);
 
-export class Video extends Document {
-  type = 'Video';
-}
-
-const objects = {Actor, Article, Audio, Collection, CollectionPage, Document, Event, Image, Note, Page, Place, Profile, Relationship, Tombstone, Video};
-
-Object.values(objects).forEach(obj => ActivityStreams.register(obj));
-ActivityStreams.register(ActivityStreams.StreamObject, 'Object');
+export class Video extends ActivityStreams.document('Video', class {}) {};
+ActivityStreams.transformer.add(Video);

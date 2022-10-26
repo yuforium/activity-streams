@@ -26,7 +26,9 @@ export function IsOneOfInstanceOrUrl(
       name: IS_ONE_OF_INSTANCE_OR_URL,
       constraints: targetTypes,
       validator: {
-        validate: (value, args): boolean => isOneOfInstance(value, Array.isArray(args?.constraints[0]) ? args?.constraints[0] as Constructor<any>[]: [args?.constraints[0]]),
+        validate: (value, args): boolean => {
+          return isURL(value) || isOneOfInstance(value, Array.isArray(args?.constraints[0]) ? args?.constraints[0] as Constructor<any>[]: [args?.constraints[0]])
+        },
         defaultMessage: buildMessage((eachPrefix, args) => {
           if (args?.constraints[0]) {
             return eachPrefix + `$property must be an instance of ${targetTypes.map(t => t.name).join('|')}`;
