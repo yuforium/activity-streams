@@ -1,4 +1,5 @@
 import { plainToClass } from 'class-transformer';
+import { IsString, validate } from 'class-validator';
 import 'reflect-metadata';
 import { ActivityStreams, Note } from '../src';
 
@@ -41,5 +42,35 @@ describe('object transformation', () => {
 
     // expect(obj.attachment[0]).toBeInstanceOf(Actor);
     // expect(obj.attachment[1]).toBeInstanceOf(Actor);
+  });
+});
+
+describe('dynamic composition', () => {
+  const transform = ActivityStreams.transform;
+
+  class TestClass extends ActivityStreams.object('TestClass') {
+    @IsString({each: true})
+    testName: string | string[];
+  }
+  ActivityStreams.transformer.add(TestClass);
+
+  it('should transform a composite object', async () => {
+    const vals = {
+      type: ['Note', 'TestClass'],
+      testName: 'test'
+    };
+
+    const obj = transform({
+      type: ['Note', 'TestClass'],
+      testName: 'test'
+    });
+
+    let errs = await validate(obj);
+    expect(errs).toHaveLength(0);
+
+    Object.assign(obj, {id: 'an invalid id', testName: 31337});
+
+    errs = await validate(obj);
+    expect(errs).toHaveLength(2);
   });
 });

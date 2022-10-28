@@ -1,6 +1,6 @@
 {
   "name": "@yuforium/activity-streams-validator",
-  "version": "0.0.6",
+  "version": "0.1.0-alpha.1",
   "description": "Activity Streams definitions with validation using class-validator and class-transformer",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -8,8 +8,8 @@
   "scripts": {
     "test": "jest",
     "coverage": "jest --coverage",
-    "build": "tsc",
-    "build:watch": "tsc --watch",
+    "build": "tsc -p tsconfig.build.json",
+    "build:watch": "tsc -p tsconfig.build.json --watch",
     "prepare": "npm run build"
   },
   "author": "Chris Moser",

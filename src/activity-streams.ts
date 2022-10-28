@@ -1,5 +1,5 @@
-import { ClassTransformOptions, Expose, plainToClass, plainToInstance, Transform, TransformFnParams } from "class-transformer";
-import { ArrayMinSize, ArrayNotEmpty, IsInt, IsMimeType, IsNotEmpty, IsNumber, IsObject, IsPositive, IsRFC3339, IsString, IsUrl, Min, ValidateIf, ValidateNested } from "class-validator";
+import { ClassTransformOptions, Expose, plainToInstance, Transform } from "class-transformer";
+import { registerDecorator, getMetadataStorage, IsInt, IsMimeType, IsNotEmpty, IsNumber, IsObject, IsPositive, IsRFC3339, IsString, IsUrl, Min, ValidateIf, ValidateNested } from "class-validator";
 import { IsOptional } from "./decorator/is-optional";
 import { ASLink } from "./interfaces/as-link.interface";
 import { ASObject, ASObjectOrLink } from "./interfaces/as-object.interface";
@@ -9,9 +9,9 @@ import { ASActivity } from "./interfaces/as-activity.interface";
 import { ASCollectionPage } from "./interfaces/as-collection-page.interface";
 import { ASDocument } from "./interfaces/as-document.interface";
 import { ASIntransitiveActivity } from "./interfaces/as-intransitive-activity.interface";
-import { Note } from "./objects";
 import { ContentMap } from "./util/content-map";
 import { IsNotEmptyArray } from "./util/is-not-empty-array";
+import { ValidationMetadata } from "class-validator/types/metadata/ValidationMetadata";
 
 /**
  * Base collection of ActivityStreams objects.
@@ -34,16 +34,33 @@ export namespace ActivityStreams {
    */
   export const transformerTypes: {[k: string]: Constructor<ASTransformable>} = {};
 
-  export class Transformer {
-    protected dynamicTypes: {[k: symbol]: Constructor<ASTransformable>} = {};
+  export interface TransformerOptions {
+    composeWithMissingConstructors?: boolean;
+  }
 
-    constructor(protected types: {[k: string]: Constructor<ASTransformable>} = {}) { }
+  // This can live anywhere in your codebase:
+  function applyMixins(derivedCtor: any, constructors: any[]) {
+    constructors.forEach((baseCtor) => {
+      Object.getOwnPropertyNames(baseCtor.prototype).forEach((name) => {
+        Object.defineProperty(
+          derivedCtor.prototype,
+          name,
+          Object.getOwnPropertyDescriptor(baseCtor.prototype, name) ||
+            Object.create(null)
+        );
+      });
+    });
+
+    return derivedCtor;
+  }
+
+  export class Transformer {
+    protected composites: {[k: symbol]: Constructor<ASTransformable>} = {};
+
+    constructor(protected types: {[k: string]: Constructor<ASTransformable>} = {}, options?: TransformerOptions) { }
 
     add(...constructors: ASConstructor<{type: string | string[]}>[]) {
-      // constructors.forEach(ctor => this.types[type] = ctor);
-      constructors.forEach(ctor => {
-        this.types[ctor.type] = ctor;
-      });
+      constructors.forEach(ctor => this.types[ctor.type] = ctor);
     }
 
     // transform({value, key, obj, type, options}: TransformFnParams) {
@@ -65,28 +82,58 @@ export namespace ActivityStreams {
 
         return value;
       }
-
       else if (Array.isArray(value.type)) {
-        const symbol = Symbol.for(value.type.join('-'));
-        let ctor = this.dynamicTypes[symbol];
+        const types = value.type.filter(t => this.types[t]);
+        const symbol = Symbol.for(types.join('-'));
 
-        if (symbol in this.dynamicTypes) {
-          return Object.assign(new ctor(), value)
+        let ctor = this.composites[symbol];
+
+        if (ctor) {
+          return plainToInstance(ctor, value, options);
         }
+        else {
+          const copiedTypes = types.slice();
+          const ctors = types.map((t) => {return this.types[t]});
+          const cls = this.composeClass(...ctors);
 
+          this.composites[symbol] = cls;
 
+          return plainToInstance(cls, value, options);
+        }
+      }
+      else {
+        return value;
+      }
+    }
+
+    protected getCompositeClass(...types: string[]) {
+    }
+
+    protected composeClass(...constructors: Constructor<any>[]) {
+      return constructors.reduce((prev: Constructor<any>, curr: Constructor<any>) => {
+        return this.mixinClass(prev, curr);
+      }, class {});
+    }
+
+    protected mixinClass(target: Constructor<any>, source: Constructor<any>): Constructor<any> {
+      const cls = class extends target {
       }
 
-      // const cls = this.types[value.type];
+      Object.getOwnPropertyNames(source.prototype).forEach((name) => {
+        Object.defineProperty(
+          cls.prototype,
+          name,
+          Object.getOwnPropertyDescriptor(source.prototype, name) || Object.create(null)
+        );
+      });
 
-      // if (cls) {
-      //   return plainToClass(cls, value);
-      // }
+      return cls;
     }
   }
 
   export const transformer = new Transformer(transformerTypes);
-  export function transform(value: {type: string | string[]}): ASObjectOrLink {
+
+  export function transform(value: {type: string | string[], [k: string]: any}): any {
     return transformer.transform({value, options: {exposeUnsetFields: false}});
   }
 
