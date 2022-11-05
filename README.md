@@ -1,9 +1,9 @@
 # @yuforium/activity-streams
-_activity streams validator and transformer_
+_Activity Streams Validator and Transformer_
 
 ## Getting Started
 ```sh
-npm install @yuforium/activity-streams-validator class-validator class-transformer reflect-metadata
+npm install @yuforium/activity-streams class-validator class-transformer reflect-metadata
 ```
 
 ## Using Built-In Classes
@@ -11,31 +11,45 @@ Use built in classes to do validation using class-validator:
 
 ```typescript
 import 'reflect-metadata';
-import { Note } from '@yuforium/activity-streams-validator';
+import { Note } from '@yuforium/activity-streams';
 import { validate } from 'class-validator';
 
 const note = new Note();
-note.id = 'https://yuforium.com/users/chris/note-123';
 
-(async () => {
+async function validateNote() {
   let errors = await validate(note);
 
   if (errors.length > 0) {
-    console.log('validation failed');
+    console.log('the note is invalid');
   }
   else {
-    console.log('validation ok');
+    console.log('the note is valid');
   }
-})();
+}
+
+note.id = 'https://yuforium.com/users/chris/note-123';
+
+validateNote(); // the note is valid
+
+note.id = 'invalid, id must be a valid URL';
+
+validateNote(); // the note is invalid
 ```
 
 ## Creating Your Own Classes
 Create your own classes by extending the built in classes or by initializing your own:
 
 ```typescript
+import { Expose } from "class-transformer";
+import { IsString, validate } from "class-validator";
+import { ActivityStreams } from "@yuforium/activity-streams";
+import 'reflect-metadata';
+
+
 // Creates CustomNote class as an Activity Streams Object
 class CustomNote extends ActivityStreams.object('CustomNote') {
   @Expose()
+  @IsString({each: true})
   public customField: string | string[];
 };
 
@@ -45,7 +59,12 @@ ActivityStreams.transformer.add(CustomNote);
 // new instance of CustomNote
 const custom = ActivityStreams.transform({
   type: 'CustomNote',
-  customField: 'someValue'
+  customField: 5 // this should be a string
+});
+
+// will get error "each value in customField must be a string"
+validate(custom).then(errors => {
+  errors.forEach(error => { console.log(error) });
 });
 ```
 
@@ -75,6 +94,7 @@ const duckYeti = ActivityStreams.transform({
   id: 'https://yuforium.com/the-infamous-duck-yeti'
 });
 
+// It's a Duck and a Yeti
 duckYeti.quack(); // quack!
 duckYeti.roar(); // roar!
 ```

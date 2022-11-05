@@ -1,6 +1,6 @@
 {
-  "name": "@yuforium/activity-streams-validator",
-  "version": "0.1.0-alpha.1",
+  "name": "@yuforium/activity-streams",
+  "version": "0.1.0",
   "description": "Activity Streams definitions with validation using class-validator and class-transformer",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -31,7 +31,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yuforium/activity-streams-validator.git"
+    "url": "git+https://github.com/yuforium/activity-streams.git"
   },
   "keywords": [
     "activity",
