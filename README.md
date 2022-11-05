@@ -1,5 +1,5 @@
-# @yuforium/activity-streams-validator
-_activity streams validator with class-validator_
+# @yuforium/activity-streams
+_activity streams validator and transformer_
 
 ## Getting Started
 ```sh
@@ -27,6 +27,56 @@ note.id = 'https://yuforium.com/users/chris/note-123';
     console.log('validation ok');
   }
 })();
+```
+
+## Creating Your Own Classes
+Create your own classes by extending the built in classes or by initializing your own:
+
+```typescript
+// Creates CustomNote class as an Activity Streams Object
+class CustomNote extends ActivityStreams.object('CustomNote') {
+  @Expose()
+  public customField: string | string[];
+};
+
+// Add this to the built in transformer
+ActivityStreams.transformer.add(CustomNote);
+
+// new instance of CustomNote
+const custom = ActivityStreams.transform({
+  type: 'CustomNote',
+  customField: 'someValue'
+});
+```
+
+## Composite Transformation
+In addition to supporting custom classes, multiple types may be defined an interpolated from the `transform()` method.
+
+```typescript
+import { ActivityStreams } from "@yuforium/activity-streams";
+import 'reflect-metadata';
+
+class Duck extends ActivityStreams.object('Duck') {
+  public quack() {
+    console.log('quack!');
+  }
+}
+
+class Yeti extends ActivityStreams.object('Yeti') {
+  public roar() {
+    console.log('roar!');
+  }
+}
+
+ActivityStreams.transformer.add(Duck, Yeti);
+
+const duckYeti = ActivityStreams.transform({
+  type: ['Duck', 'Yeti'],
+  id: 'https://yuforium.com/the-infamous-duck-yeti'
+});
+
+duckYeti.quack(); // quack!
+duckYeti.roar(); // roar!
 ```
 
 ## Requiring Optional Fields

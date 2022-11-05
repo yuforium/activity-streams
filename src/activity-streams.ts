@@ -11,7 +11,6 @@ import { ASDocument } from "./interfaces/as-document.interface";
 import { ASIntransitiveActivity } from "./interfaces/as-intransitive-activity.interface";
 import { ContentMap } from "./util/content-map";
 import { IsNotEmptyArray } from "./util/is-not-empty-array";
-import { ValidationMetadata } from "class-validator/types/metadata/ValidationMetadata";
 
 /**
  * Base collection of ActivityStreams objects.
@@ -63,8 +62,7 @@ export namespace ActivityStreams {
       constructors.forEach(ctor => this.types[ctor.type] = ctor);
     }
 
-    // transform({value, key, obj, type, options}: TransformFnParams) {
-    transform({value, options}: {value: {type: string | string[]}, options?: ClassTransformOptions}): any {
+    transform({value, options}: {value: {type: string | string[], [k: string]: any}, options?: ClassTransformOptions}): any {
       if (Array.isArray(value)) {
         return value.map(v => this.transform({value: v, options}));
       }

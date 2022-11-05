@@ -72,5 +72,7 @@ describe('dynamic composition', () => {
 
     errs = await validate(obj);
     expect(errs).toHaveLength(2);
+    expect(errs.find(e => e.property === 'id')).toHaveProperty('constraints.isUrl');
+    expect(errs.find(e => e.property === 'testName')).toHaveProperty('constraints.isString');
   });
 });
