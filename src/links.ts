@@ -11,7 +11,7 @@ import { Constructor } from "./util/constructor";
  *
  * https://www.w3.org/TR/activitystreams-core/#link
  */
-export const Link: Constructor<ASLink> = ActivityStreams.link('Link', class Link {});
+export class Link extends ActivityStreams.link('Link') {};
 
 /**
  * A specialized Link that represents an @mention.

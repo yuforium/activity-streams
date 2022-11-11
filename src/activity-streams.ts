@@ -24,7 +24,7 @@ export namespace ActivityStreams {
   };
 
   export interface ASConstructor<T> extends Constructor<T> {
-    type: string;
+    type: string | string[];
   };
 
   /**
@@ -35,31 +35,22 @@ export namespace ActivityStreams {
 
   export interface TransformerOptions {
     composeWithMissingConstructors?: boolean;
-  }
-
-  // This can live anywhere in your codebase:
-  function applyMixins(derivedCtor: any, constructors: any[]) {
-    constructors.forEach((baseCtor) => {
-      Object.getOwnPropertyNames(baseCtor.prototype).forEach((name) => {
-        Object.defineProperty(
-          derivedCtor.prototype,
-          name,
-          Object.getOwnPropertyDescriptor(baseCtor.prototype, name) ||
-            Object.create(null)
-        );
-      });
-    });
-
-    return derivedCtor;
+    enableCompositeTypes?: boolean
   }
 
   export class Transformer {
     protected composites: {[k: symbol]: Constructor<ASTransformable>} = {};
+    protected options: TransformerOptions = {
+      composeWithMissingConstructors: true,
+      enableCompositeTypes: true
+    };
 
-    constructor(protected types: {[k: string]: Constructor<ASTransformable>} = {}, options?: TransformerOptions) { }
+    constructor(protected types: {[k: string]: Constructor<ASTransformable>} = {}, options?: TransformerOptions) {
+      Object.assign(this.options, options);
+    }
 
     add(...constructors: ASConstructor<{type: string | string[]}>[]) {
-      constructors.forEach(ctor => this.types[ctor.type] = ctor);
+      constructors.forEach(ctor => this.types[ctor.type as string] = ctor);
     }
 
     transform({value, options}: {value: {type: string | string[], [k: string]: any}, options?: ClassTransformOptions}): any {
@@ -80,7 +71,7 @@ export namespace ActivityStreams {
 
         return value;
       }
-      else if (Array.isArray(value.type)) {
+      else if (Array.isArray(value.type) && this.options.enableCompositeTypes) {
         const types = value.type.filter(t => this.types[t]);
         const symbol = Symbol.for(types.join('-'));
 
@@ -102,9 +93,6 @@ export namespace ActivityStreams {
       else {
         return value;
       }
-    }
-
-    protected getCompositeClass(...types: string[]) {
     }
 
     protected composeClass(...constructors: Constructor<any>[]) {
@@ -158,7 +146,7 @@ export namespace ActivityStreams {
 
       @IsString()
       @IsOptional()
-      name?: string|string[];
+      name?: string | string[];
 
       @IsString()
       @IsOptional()
@@ -189,19 +177,19 @@ export namespace ActivityStreams {
     return ActivityStreamsLink;
   }
 
-  export function object<TBase extends Constructor<ASTransformable> = Constructor<ASTransformable>>(namedType: string, Base?: TBase | undefined): ASConstructor<ASObject> {
+  export function object<TBase extends Constructor<ASTransformable> = Constructor<ASTransformable>>(namedType: string, Base?: TBase | undefined): ASConstructor<{type: string | string[], [k: string]: any}> {
     if (Base === undefined) {
       Base = class {} as TBase;
     }
 
     class ActivityStreamsObject extends Base implements ASObject {
-      static readonly type = namedType;
+      static readonly type: string | string[] = namedType;
 
       @IsString({each: true})
       @IsNotEmpty()
       @IsNotEmptyArray()
       @Expose()
-      type: string = namedType;
+      type: string | string[] = namedType;
 
       @IsString()
       @IsUrl()
@@ -418,7 +406,11 @@ export namespace ActivityStreams {
     return ActivityStreamsDocument;
   }
 
-  export function activity<TBase extends Constructor<ASTransformable>>(namedType: string, Base: TBase): ASConstructor<ASActivity> {
+  export function activity<TBase extends Constructor<ASTransformable>>(namedType: string, Base?: TBase | undefined): ASConstructor<ASActivity> {
+    if (Base === undefined) {
+      Base = class {} as TBase;
+    }
+
     class ActivityStreamsActivity extends object(namedType, Base) implements ASActivity {
       @IsOptional()
       @Expose()
@@ -448,7 +440,11 @@ export namespace ActivityStreams {
     return ActivityStreamsActivity;
   }
 
-  export function intransitiveActivity<TBase extends Constructor<ASTransformable>>(namedType: string, Base: TBase): ASConstructor<ASIntransitiveActivity> {
+  export function intransitiveActivity<TBase extends Constructor<ASTransformable>>(namedType: string, Base?: TBase | undefined): ASConstructor<ASIntransitiveActivity> {
+    if (Base === undefined) {
+      Base = class {} as TBase;
+    }
+
     class ActivityStreamsIntransitiveActivity extends activity(namedType, Base) implements ASIntransitiveActivity {
     }
 

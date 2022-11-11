@@ -1,24 +1,22 @@
 import { ActivityStreams, Actor } from ".";
 import { Constructor } from "./util/constructor";
 
-// export class Application extends Actor {
+export class Application extends Actor {
+  static readonly type = "Application";
+}
 
-// }
+export class Group extends Actor {
+  static readonly type = "Group";
+}
 
-// export class Group extends Actor {
+export class Organization extends Actor {
+  static readonly type = "Organization";
+}
 
-// }
+export class Person extends Actor {
+  static readonly type = "Person";
+}
 
-// export class Organization extends Actor {
-
-// }
-
-// export class Person extends Actor {
-
-// }
-
-// export class Service extends Actor {
-
-// }
-
-// [Application, Group, Organization, Person, Service].forEach((constructor: Constructor<Actor>) => ActivityStreams.register(constructor));
+export class Service extends Actor {
+  static readonly type = "Service";
+}

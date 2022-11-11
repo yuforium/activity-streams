@@ -6,6 +6,9 @@ import { ASCollectionPage } from './interfaces/as-collection-page.interface';
 import { ASObject, ASObjectOrLink } from './interfaces/as-object.interface';
 import { Constructor } from './util/constructor';
 
+/**
+ * @category Core
+ */
 class BaseObject extends ActivityStreams.object('Object') {}; // registers this as type "Object" (name can't be used as class name however)
 
 export class Actor extends ActivityStreams.object('Actor') {};
@@ -89,3 +92,5 @@ ActivityStreams.transformer.add(Tombstone);
 
 export class Video extends ActivityStreams.document('Video', class {}) {};
 ActivityStreams.transformer.add(Video);
+
+export { BaseObject as Object }

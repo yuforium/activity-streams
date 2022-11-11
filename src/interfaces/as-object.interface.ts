@@ -14,7 +14,7 @@ export interface ASObject {
   content?: string | string[];
   context?: ASObjectOrLink | ASObjectOrLink[];
   contentMap?: ASContentMap;
-  name?: string|string[];
+  name?: string | string[];
   nameMap?: ASContentMap|ASContentMap[];
   endTime?: string;
   generator?: ASObjectOrLink | ASObjectOrLink[];
