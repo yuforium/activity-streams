@@ -1,6 +1,6 @@
-import { Expose } from "class-transformer";
-import { IsString, validate } from "class-validator";
-import { ActivityStreams } from "../src";
+import { Expose } from 'class-transformer';
+import { IsString, validate } from 'class-validator';
+import { ActivityStreams } from '../src';
 import 'reflect-metadata';
 
 
@@ -11,11 +11,11 @@ class CustomNote extends ActivityStreams.object('CustomNote') {
   public customField: string | string[];
 };
 
-// Add this to the built in transformer
+// Add this to the built-in transformer
 ActivityStreams.transformer.add(CustomNote);
 
 // new instance of CustomNote
-const custom = ActivityStreams.transform({
+const custom: CustomNote = ActivityStreams.transform({
   type: 'CustomNote',
   customField: 5 // invalid, must be a string
 });

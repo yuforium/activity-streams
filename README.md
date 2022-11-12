@@ -3,7 +3,10 @@ _Activity Streams Validator and Transformer_
 
 ## Getting Started
 ```sh
-npm install @yuforium/activity-streams class-validator class-transformer reflect-metadata
+npm i --save \
+  @yuforium/activity-streams \
+  class-validator class-transformer \
+  reflect-metadata
 ```
 
 ## Using Built-In Classes
@@ -36,13 +39,45 @@ note.id = 'invalid, id must be a valid URL';
 validateNote(); // the note is invalid
 ```
 
-## Creating Your Own Classes
-Create your own classes by extending the built in classes or by initializing your own:
+## Defining Custom Validation Rules
+You can define your own validation rules by extending the built in classes or initializing your own using one of several methods using a base type (such as a link, object, activity, or collection):
 
 ```typescript
-import { Expose } from "class-transformer";
-import { IsString, validate } from "class-validator";
-import { ActivityStreams } from "@yuforium/activity-streams";
+import { Expose } from 'class-transformer';
+import { IsString, validate } from 'class-validator';
+import { ActivityStreams } from '@yuforium/activity-streams';
+import 'reflect-metadata';
+
+
+// Creates a CustomNote type class as an Activity Streams Object
+class CustomNote extends ActivityStreams.object('CustomNote') {
+  @Expose()
+  @IsString({each: true})
+  public customField: string | string[];
+};
+
+// Add this to the built-in transformer
+ActivityStreams.transformer.add(CustomNote);
+
+// new instance of CustomNote
+const custom: CustomNote = ActivityStreams.transform({
+  type: 'CustomNote',
+  customField: 5 // invalid, must be a string
+});
+
+// will get error "each value in customField must be a string"
+validate(custom).then(errors => {
+  errors.forEach(error => { console.log(error) });
+});
+```
+
+## Composite Transformation
+In addition to supporting custom classes, multiple types may be defined and interpolated from the `transform()` method.
+
+```typescript
+import { Expose } from 'class-transformer';
+import { IsString, validate } from 'class-validator';
+import { ActivityStreams } from '@yuforium/activity-streams';
 import 'reflect-metadata';
 
 
@@ -59,44 +94,13 @@ ActivityStreams.transformer.add(CustomNote);
 // new instance of CustomNote
 const custom = ActivityStreams.transform({
   type: 'CustomNote',
-  customField: 5 // this should be a string
+  customField: 5 // invalid, must be a string
 });
 
 // will get error "each value in customField must be a string"
 validate(custom).then(errors => {
   errors.forEach(error => { console.log(error) });
 });
-```
-
-## Composite Transformation
-In addition to supporting custom classes, multiple types may be defined an interpolated from the `transform()` method.
-
-```typescript
-import { ActivityStreams } from "@yuforium/activity-streams";
-import 'reflect-metadata';
-
-class Duck extends ActivityStreams.object('Duck') {
-  public quack() {
-    console.log('quack!');
-  }
-}
-
-class Yeti extends ActivityStreams.object('Yeti') {
-  public roar() {
-    console.log('roar!');
-  }
-}
-
-ActivityStreams.transformer.add(Duck, Yeti);
-
-const duckYeti = ActivityStreams.transform({
-  type: ['Duck', 'Yeti'],
-  id: 'https://yuforium.com/the-infamous-duck-yeti'
-});
-
-// It's a Duck and a Yeti
-duckYeti.quack(); // quack!
-duckYeti.roar(); // roar!
 ```
 
 ## Requiring Optional Fields
@@ -106,7 +110,7 @@ Extend the classes you need and then use the `@IsRequired()` decorator for these
 
 _my-note.ts_
 ```typescript
-import { Note, IsRequired } from '@yuforium/activity-streams-validator';
+import { Note, IsRequired } from '@yuforium/activity-streams';
 
 export class MyNote extends Note {
   // content field is now required

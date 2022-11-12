@@ -117,12 +117,27 @@ export namespace ActivityStreams {
     }
   }
 
+  /**
+   * The built in ActivityStreams transformer.  This is used by the ActivityStreams.transform() method, and can be used to transform a plain object to any of the built-in ActivityStreams classes for validation.
+   */
   export const transformer = new Transformer(transformerTypes);
 
+  /**
+   * A built-in function that uses the {@link ActivityStreams.transformer} to transform a plain object to an ActivityStreams object.
+   * @param value Object
+   * @returns ASContructor<ASLink | ASObject>
+   */
   export function transform(value: {type: string | string[], [k: string]: any}): any {
     return transformer.transform({value, options: {exposeUnsetFields: false}});
   }
 
+  /**
+   * Create a new class based on the ActivityStreams Link type.
+   *
+   * @param namedType The name of the type to create, which will equal to the value of the type property.
+   * @param Base Base class to derive from.  Defaults to ASTransformable.
+   * @returns ASConstructor<ASLink>
+   */
   export function link<TBase extends Constructor<ASTransformable>>(namedType: string, Base?: TBase | undefined): ASConstructor<ASLink> {
     if (Base === undefined) {
       Base = class {} as TBase;
@@ -177,7 +192,13 @@ export namespace ActivityStreams {
     return ActivityStreamsLink;
   }
 
-  export function object<TBase extends Constructor<ASTransformable> = Constructor<ASTransformable>>(namedType: string, Base?: TBase | undefined): ASConstructor<{type: string | string[], [k: string]: any}> {
+  /**
+   * Create a new class based on the ActivityStreams Object type.
+   * @param namedType The name of the type to create, which will equal to the value of the type property.
+   * @param Base Base class to derive from.  Defaults to ASTransformable.
+   * @returns ASConstructor<ASObject>
+   */
+  export function object<TBase extends Constructor<ASTransformable> = Constructor<ASTransformable>>(namedType: string, Base?: TBase | undefined): ASConstructor<ASObject> {
     if (Base === undefined) {
       Base = class {} as TBase;
     }
@@ -399,6 +420,13 @@ export namespace ActivityStreams {
     return ActivityStreamsObject;
   }
 
+  /**
+   * Create a new class based on the ActivityStreams Document type.
+   *
+   * @param namedType The name of the type to create, which will equal to the value of the type property.
+   * @param Base Base class to derive from.  Defaults to ASTransformable.
+   * @returns ASConstructor<ASDocument>
+   */
   export function document<TBase extends Constructor<ASTransformable>>(namedType: string, Base?: TBase | undefined): ASConstructor<ASDocument> {
     class ActivityStreamsDocument extends object(namedType, Base) implements ASDocument {
     }
@@ -406,6 +434,13 @@ export namespace ActivityStreams {
     return ActivityStreamsDocument;
   }
 
+  /**
+   * Create a new class based on the ActivityStreams Activity type.
+   *
+   * @param namedType The name of the type to create, which will equal to the value of the type property.
+   * @param Base Base class to derive from.  Defaults to ASTransformable.
+   * @returns ASConstructor<ASActivity>
+   */
   export function activity<TBase extends Constructor<ASTransformable>>(namedType: string, Base?: TBase | undefined): ASConstructor<ASActivity> {
     if (Base === undefined) {
       Base = class {} as TBase;
@@ -440,6 +475,13 @@ export namespace ActivityStreams {
     return ActivityStreamsActivity;
   }
 
+  /**
+   * Create a new class based on the ActivityStreams IntransitiveActivity type.
+   *
+   * @param namedType The name of the type to create, which will equal to the value of the type property.
+   * @param Base Base class to derive from.  Defaults to ASTransformable.
+   * @returns ASConstructor<ASIntransitiveActivity>
+   */
   export function intransitiveActivity<TBase extends Constructor<ASTransformable>>(namedType: string, Base?: TBase | undefined): ASConstructor<ASIntransitiveActivity> {
     if (Base === undefined) {
       Base = class {} as TBase;
@@ -451,6 +493,13 @@ export namespace ActivityStreams {
     return ActivityStreamsIntransitiveActivity;
   }
 
+  /**
+   * Create a new class based on the ActivityStreams Collection type.
+   *
+   * @param namedType The name of the type to create, which will equal to the value of the type property.
+   * @param Base Base class to derive from.  Defaults to ASTransformable.
+   * @returns ASConstructor<ASCollection>
+   */
   export function collection<TBase extends Constructor<ASTransformable>>(namedType: string, Base?: TBase | undefined): ASConstructor<ASCollection> {
     class ActivityStreamsCollection extends object(namedType, Base) implements ASCollection {
       @Expose()
@@ -480,6 +529,13 @@ export namespace ActivityStreams {
     return ActivityStreamsCollection;
   }
 
+  /**
+   * Create a new class based on the ActivityStreams CollectionPage type.
+   *
+   * @param namedType The name of the type to create, which will equal to the value of the type property.
+   * @param Base Base class to derive from.  Defaults to ASTransformable.
+   * @returns ASConstructor<ASCollectionPage>
+   */
   export function collectionPage<TBase extends Constructor<ASTransformable>>(namedType: string, Base?: TBase | undefined): ASConstructor<ASCollectionPage> {
     class ActivityStreamsCollectionPage extends collection(namedType, Base) {
       @Expose()
