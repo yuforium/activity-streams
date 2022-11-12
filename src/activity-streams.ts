@@ -35,14 +35,16 @@ export namespace ActivityStreams {
 
   export interface TransformerOptions {
     composeWithMissingConstructors?: boolean;
-    enableCompositeTypes?: boolean
+    enableCompositeTypes?: boolean,
+    alwaysReturnValueOnTransform?: boolean;
   }
 
   export class Transformer {
     protected composites: {[k: symbol]: Constructor<ASTransformable>} = {};
     protected options: TransformerOptions = {
       composeWithMissingConstructors: true,
-      enableCompositeTypes: true
+      enableCompositeTypes: true,
+      alwaysReturnValueOnTransform: false
     };
 
     constructor(protected types: {[k: string]: Constructor<ASTransformable>} = {}, options?: TransformerOptions) {
@@ -54,26 +56,38 @@ export namespace ActivityStreams {
     }
 
     transform({value, options}: {value: {type: string | string[], [k: string]: any}, options?: ClassTransformOptions}): any {
+      options = Object.assign({excludeExtraneousValues: true, exposeUnsetFields: false}, options);
+
       if (Array.isArray(value)) {
         return value.map(v => this.transform({value: v, options}));
       }
 
       if (typeof value !== 'object') {
-        return value;
+        return  this.options.alwaysReturnValueOnTransform ? value : undefined;
       }
 
       if (typeof value.type === 'string') {
-        const cls = this.types[value.type];
-
         if (this.types[value.type]) {
           return plainToInstance(this.types[value.type], value, options);
         }
 
-        return value;
+        if (this.options.alwaysReturnValueOnTransform) {
+          return value;
+        }
+
+        return undefined;
       }
       else if (Array.isArray(value.type) && this.options.enableCompositeTypes) {
         const types = value.type.filter(t => this.types[t]);
         const symbol = Symbol.for(types.join('-'));
+
+        if (!types.length) {
+          if (this.options.alwaysReturnValueOnTransform) {
+            return value;
+          }
+
+          return undefined;
+        }
 
         let ctor = this.composites[symbol];
 
@@ -81,17 +95,24 @@ export namespace ActivityStreams {
           return plainToInstance(ctor, value, options);
         }
         else {
-          const copiedTypes = types.slice();
           const ctors = types.map((t) => {return this.types[t]});
           const cls = this.composeClass(...ctors);
 
           this.composites[symbol] = cls;
 
+          if (!this.options.composeWithMissingConstructors && ctors.length !== types.length) {
+            if (this.options.alwaysReturnValueOnTransform) {
+              return value;
+            }
+
+            return undefined;
+          }
+
           return plainToInstance(cls, value, options);
         }
       }
       else {
-        return value;
+        return this.options.alwaysReturnValueOnTransform ? value : undefined;
       }
     }
 
