@@ -7,17 +7,17 @@
   "sideEffects": false,
   "scripts": {
     "doc": "npx typedoc -out docs ./src/index.ts",
-    "test": "jest",
-    "coverage": "jest --coverage",
-    "build": "tsc -p tsconfig.build.json",
-    "build:watch": "tsc -p tsconfig.build.json --watch",
+    "test": "npx jest",
+    "coverage": "npx jest --coverage",
+    "build": "npx tsc -p tsconfig.build.json",
+    "build:watch": "npx tsc -p tsconfig.build.json --watch",
     "prepare": "npm run build"
   },
   "author": "Chris Moser",
   "license": "MIT",
   "peerDependencies": {
     "class-transformer": "^0.5.1",
-    "class-validator": "^0.13.2",
+    "class-validator": "^0.14.0",
     "reflect-metadata": "^0.1.13"
   },
   "devDependencies": {
