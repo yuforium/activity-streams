@@ -167,6 +167,10 @@ export namespace ActivityStreams {
     class ActivityStreamsLink extends Base implements ASLink {
       static readonly type = namedType;
 
+      @IsString({each: true})
+      @IsOptional()
+      '@context'?: string | string[] = 'https://www.w3.org/ns/activitystreams';
+
       @IsString()
       @IsNotEmpty()
       @Expose()
@@ -226,6 +230,10 @@ export namespace ActivityStreams {
 
     class ActivityStreamsObject extends Base implements ASObject {
       static readonly type: string | string[] = namedType;
+
+      @IsString()
+      @IsOptional()
+      '@context'?: string | string[] = 'https://www.w3.org/ns/activitystreams';
 
       @IsString({each: true})
       @IsNotEmpty()

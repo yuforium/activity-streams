@@ -6,6 +6,7 @@ export type ASObjectOrLink = ASObject | ASLink | string;
 export type ASContentMap = {[key: string]: string}[];
 
 export interface ASObject {
+  '@context'?: string | string[];
   id?: string;
   type: string | string[];
   attachment?: ASObjectOrLink | ASObjectOrLink[];
