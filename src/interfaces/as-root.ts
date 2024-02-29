@@ -1,8 +1,7 @@
-export interface ASLink {
-  '@context'?: string | string[];
-  type: string | string[];
+import { ASRoot } from "./as-base.interface";
+
+export interface ASLink extends ASRoot {
   href: string;
-  id?: string;
   name?: string | string[];
   hreflang?: string;
   mediaType?: string;

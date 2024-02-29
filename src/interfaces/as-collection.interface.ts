@@ -1,5 +1,5 @@
 import { ASCollectionPage } from "./as-collection-page.interface";
-import { ASLink } from "./as-link.interface";
+import { ASLink } from "./as-root";
 import { ASObject } from "./as-object.interface";
 
 export interface ASCollection extends ASObject {

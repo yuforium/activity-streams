@@ -1,5 +1,5 @@
-import { ActivityStreams } from ".";
-import { ASLink } from "./interfaces/as-link.interface";
+import { ActivityStreams } from "./activity-streams";
+import { ASLink } from "./interfaces/as-root";
 import { Constructor } from "./util/constructor";
 
 /**
@@ -12,10 +12,12 @@ import { Constructor } from "./util/constructor";
  * https://www.w3.org/TR/activitystreams-core/#link
  */
 export class Link extends ActivityStreams.link('Link') {};
+ActivityStreams.transformer.add(Link);
 
 /**
  * A specialized Link that represents an @mention.
  *
  * https://www.w3.org/ns/activitystreams#Mention
  */
-export const Mention: Constructor<ASLink> = ActivityStreams.link('Mention', class Mention {});
+export class Mention extends ActivityStreams.link('Mention') {};
+ActivityStreams.transformer.add(Mention);

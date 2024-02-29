@@ -1,7 +1,7 @@
-import { ClassTransformOptions, Expose, plainToInstance, Transform } from "class-transformer";
-import { registerDecorator, getMetadataStorage, IsInt, IsMimeType, IsNotEmpty, IsNumber, IsObject, IsPositive, IsRFC3339, IsString, IsUrl, Min, ValidateIf, ValidateNested } from "class-validator";
+import { ClassTransformOptions, Exclude, Expose, plainToInstance, Transform } from "class-transformer";
+import { IsInt, IsMimeType, IsNotEmpty, IsNumber, IsObject, IsPositive, IsRFC3339, IsString, IsUrl, Min } from "class-validator";
 import { IsOptional } from "./decorator/is-optional";
-import { ASLink } from "./interfaces/as-link.interface";
+import { ASLink } from "./interfaces/as-root";
 import { ASObject, ASObjectOrLink } from "./interfaces/as-object.interface";
 import { ASCollection } from "./interfaces/as-collection.interface";
 import { Constructor } from "./util/constructor";
@@ -11,6 +11,9 @@ import { ASDocument } from "./interfaces/as-document.interface";
 import { ASIntransitiveActivity } from "./interfaces/as-intransitive-activity.interface";
 import { ContentMap } from "./util/content-map";
 import { IsNotEmptyArray } from "./util/is-not-empty-array";
+
+import { ResolvingArray } from "./util/resolving-array";
+import { ASRoot } from "./interfaces/as-base.interface";
 
 /**
  * Base collection of ActivityStreams objects.
@@ -26,6 +29,25 @@ export namespace ActivityStreams {
   export interface ASConstructor<T> extends Constructor<T> {
     type: string | string[];
   };
+
+  /**
+   * A Resolver is a class that can resolve a URL to an object.
+   * @throws an error if the URL is unresolvable (optional based on implementation)
+   * @returns a promise that resolves to an object or link, or if unresolvable a string depending on the resolver.
+   */
+  export interface Resolver {
+    resolve(href: string): Promise<ASObject | ASLink | string>;
+  }
+
+  /**
+   * A simple HTTP fetch resolver that uses fetch to resolve URLs.
+   */
+  export class HttpFetchResolver implements Resolver {
+    async resolve(href: string) {
+      const response = await fetch(href);
+      return '';
+    }
+  }
 
   /**
    * Default registered types.  When new types are added via the ActivityStreams.object() or ActivityStreams.link() methods, they are
@@ -55,11 +77,22 @@ export namespace ActivityStreams {
       constructors.forEach(ctor => this.types[ctor.type as string] = ctor);
     }
 
-    transform({value, options}: {value: {type: string | string[], [k: string]: any}, options?: ClassTransformOptions}): any {
+    transform(
+      {value, options}: {value: {type: string | string[], [k: string]: any}, options?: ClassTransformOptions},
+      transformOptions?: {transformLinks?: boolean}): any {
       options = Object.assign({excludeExtraneousValues: true, exposeUnsetFields: false}, options);
+      transformOptions = Object.assign({transformLinks: false}, transformOptions);
 
       if (Array.isArray(value)) {
-        return value.map(v => this.transform({value: v, options}));
+        const a = new ResolvingArray();
+        value.forEach(v => a.push(this.transform({value: v, options})));
+        return a;
+      }
+
+      if (typeof value === 'string' && transformOptions.transformLinks) {
+        const link = new this.types['Link'](value);
+        // const link = plainToInstance(this.types['Link'], {type: 'Link', href: value}, options);
+        return link;
       }
 
       if (typeof value !== 'object') {
@@ -167,8 +200,85 @@ export namespace ActivityStreams {
     class ActivityStreamsLink extends Base implements ASLink {
       static readonly type = namedType;
 
+      /**
+       * The resolved object, if the link has been resolved.
+       */
+      // @Exclude()
+      // protected _resolved: any = undefined;
+
+      // @Exclude()
+      // protected _hrefOnly = false;
+
+      constructor(...args: any[]) {
+        super(...args);
+
+        const [initValues] = args;
+
+        let _resolved: undefined | ASObjectOrLink;
+        let _asLinkOnly = false;
+
+        if (typeof initValues === 'string') {
+          this.href = initValues;
+          _asLinkOnly = true;
+        }
+        else {
+          Object.assign(this, initValues);
+        }
+
+        this.resolve = async function resolve(): Promise<ASObjectOrLink> {
+          if (_resolved) {
+            return _resolved as any;
+          }
+
+          const response = await fetch(this.href, {headers: {'Accept': 'application/json'}});
+          const raw = await response.json();
+          _resolved = transform(raw);
+
+          return _resolved as any;
+        }
+
+        this.toJSON = function toJSON() {
+          if (_asLinkOnly) {
+            return this.href;
+          }
+
+          return this;
+        }
+      }
+
+      resolve: () => Promise<ASObjectOrLink>;
+      toJSON: () => any;
+
+      /**
+       * This method should resolve the link and return a Promise with the resolved object.  An additional
+       * property can be set on the parent object to indicate that when transformed to JSON, any resolved links
+       * should be included in the output.
+       */
+      // async resolve(): Promise<any> {
+      //   if (this._resolved) {
+      //     return this._resolved;
+      //   }
+
+      //   const response = await fetch(this.href);
+
+      //   if (!response.ok) {
+      //     throw new Error(`Unable to resolve link: ${response.statusText}`);
+      //   }
+
+      //   const json = await response.json();
+
+      //   if (!json.type || (Array.isArray(json.type) && json.type.find((t: any) => typeof t !== 'string'))) {
+      //     throw new Error('Unable to resolve link: Invalid type or no type provided');
+      //   }
+
+      //   this._resolved = transform(json as any);
+
+      //   return this._resolved;
+      // }
+
       @IsString({each: true})
       @IsOptional()
+      @Expose()
       '@context'?: string | string[] = 'https://www.w3.org/ns/activitystreams';
 
       @IsString()
@@ -178,44 +288,60 @@ export namespace ActivityStreams {
 
       @IsString()
       @IsUrl()
+      @Expose()
       href: string;
 
       @IsString()
       @IsOptional()
+      @Expose()
       id?: string;
 
       @IsString()
       @IsOptional()
+      @Expose()
       name?: string | string[];
 
       @IsString()
       @IsOptional()
+      @Expose()
       hreflang?: string;
 
       @IsString()
       @IsOptional()
       @IsMimeType()
+      @Expose()
       mediaType?: string;
 
       @IsString()
       @IsOptional()
+      @Expose()
       rel?: string|string[];
 
       @IsOptional()
       @IsNumber()
       @IsInt()
       @IsPositive()
+      @Expose()
       height?: number;
 
       @IsOptional()
       @IsNumber()
       @IsInt()
       @IsPositive()
+      @Expose()
       width?: number;
     }
 
     return ActivityStreamsLink;
   }
+
+  export const linkTransformOptions = {
+    transformLinks: true,
+    type: 'Link'
+  };
+
+  const LinkTransform = Transform(params => transformer.transform(params, {transformLinks: true}));
+
 
   /**
    * Create a new class based on the ActivityStreams Object type.
@@ -230,6 +356,10 @@ export namespace ActivityStreams {
 
     class ActivityStreamsObject extends Base implements ASObject {
       static readonly type: string | string[] = namedType;
+
+      async resolve(): Promise<any> {
+        return this;
+      }
 
       @IsString()
       @IsOptional()
@@ -254,8 +384,8 @@ export namespace ActivityStreams {
        */
       @IsOptional()
       @Expose()
-      @Transform(params => transformer.transform(params))
-      public attachment?: ASObjectOrLink | ASObjectOrLink[];
+      @LinkTransform
+      public attachment?: ASLink | ResolvingArray<ASLink>;
 
       /**
        * Identifies one or more entities to which this object is attributed. The attributed entities might not be Actors. For instance, an object might be attributed to the completion of another activity.
