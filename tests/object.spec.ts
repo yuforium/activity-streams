@@ -1,7 +1,7 @@
 import { plainToClass } from 'class-transformer';
 import { IsString, validate } from 'class-validator';
 import 'reflect-metadata';
-import { ActivityStreams, Note } from '../src';
+import { ActivityStreams, Note } from '../lib';
 
 // const toASObject = ActivityStreams.transform("Object");
 

@@ -1,4 +1,3 @@
-import { ResolvingArray } from "../util/resolving-array";
 import { ASRoot } from "./as-base.interface";
 import { ASCollection } from "./as-collection.interface";
 import { ASLink } from "./as-root";
@@ -11,7 +10,7 @@ export interface ASObject extends ASRoot {
   '@context'?: string | string[];
   id?: string;
   type: string | string[];
-  attachment?: ASLink | ResolvingArray<ASLink>;
+  attachment?: ASObjectOrLink | ASObjectOrLink[];
   attributedTo?: ASObjectOrLink | ASObjectOrLink[];
   audience?: ASObjectOrLink | ASObjectOrLink[];
   content?: string | string[];

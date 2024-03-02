@@ -1,7 +1,6 @@
 import { validate, ValidationError } from 'class-validator';
 import 'reflect-metadata';
-import { ActivityStreams, Note } from "../src";
-import { Constructor } from '../src/util/constructor';
+import { ActivityStreams, Note } from "../lib";
 
 describe('basic id validation', () => {
   class GenericObject extends ActivityStreams.object('Object') { };

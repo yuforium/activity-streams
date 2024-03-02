@@ -6,7 +6,7 @@
   "types": "dist/index.d.ts",
   "sideEffects": false,
   "scripts": {
-    "doc": "npx typedoc -out docs ./src/index.ts",
+    "doc": "npx typedoc -out docs ./lib/index.ts",
     "test": "npx jest",
     "coverage": "npx jest --coverage",
     "build": "npx tsc -p tsconfig.build.json",
@@ -45,6 +45,6 @@
   "homepage": "https://github.com/yuforium/activity-streams-validator#readme",
   "files": [
     "dist",
-    "src"
+    "lib"
   ]
 }

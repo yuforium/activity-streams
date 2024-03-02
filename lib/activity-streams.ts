@@ -11,8 +11,6 @@ import { ASDocument } from "./interfaces/as-document.interface";
 import { ASIntransitiveActivity } from "./interfaces/as-intransitive-activity.interface";
 import { ContentMap } from "./util/content-map";
 import { IsNotEmptyArray } from "./util/is-not-empty-array";
-
-import { ResolvingArray } from "./util/resolving-array";
 import { ASRoot } from "./interfaces/as-base.interface";
 
 /**
@@ -21,7 +19,7 @@ import { ASRoot } from "./interfaces/as-base.interface";
 export namespace ActivityStreams {
   /**
    * Interface for any class that can be transformed into an ActivityStreams object.
-   * At this time there are no requirements, but they may be added in the future.
+   * Currently there are no requirements, but they may be added in the future.
    */
   export interface ASTransformable {
   };
@@ -31,7 +29,7 @@ export namespace ActivityStreams {
   };
 
   /**
-   * A Resolver is a class that can resolve a URL to an object.
+   * Interface for a cass that resolves URLs to an object.
    * @throws an error if the URL is unresolvable (optional based on implementation)
    * @returns a promise that resolves to an object or link, or if unresolvable a string depending on the resolver.
    */
@@ -84,7 +82,7 @@ export namespace ActivityStreams {
       transformOptions = Object.assign({transformLinks: false}, transformOptions);
 
       if (Array.isArray(value)) {
-        const a = new ResolvingArray();
+        const a: ASRoot[] = [];
         value.forEach(v => a.push(this.transform({value: v, options})));
         return a;
       }
@@ -225,29 +223,51 @@ export namespace ActivityStreams {
           Object.assign(this, initValues);
         }
 
-        this.resolve = async function resolve(): Promise<ASObjectOrLink> {
-          if (_resolved) {
-            return _resolved as any;
+        Object.defineProperties(this, {
+          _asLinkOnly: {
+            value: _asLinkOnly,
+            enumerable: false
+          },
+          resolve: {
+            value: async function resolve(): Promise<ASObjectOrLink> {
+              if (_resolved) {
+                return _resolved as any;
+              }
+
+              const response = await fetch(this.href, {headers: {'Accept': 'application/json'}});
+              const raw = await response.json();
+              _resolved = transform(raw);
+
+              return _resolved as any;
+            },
+            enumerable: false
+          },
+          toJSON: {
+            value: function toJSON() {
+              if (this._asLinkOnly) {
+                return this.href;
+              }
+
+              return this;
+            },
+            enumerable: false
+          },
+          toString: {
+            value: function toString() {
+              if (_asLinkOnly) {
+                return this.href;
+              }
+
+              return "test";
+            },
+            enumerable: false
           }
-
-          const response = await fetch(this.href, {headers: {'Accept': 'application/json'}});
-          const raw = await response.json();
-          _resolved = transform(raw);
-
-          return _resolved as any;
-        }
-
-        this.toJSON = function toJSON() {
-          if (_asLinkOnly) {
-            return this.href;
-          }
-
-          return this;
-        }
+        });
       }
 
       resolve: () => Promise<ASObjectOrLink>;
       toJSON: () => any;
+      toString: () => any;
 
       /**
        * This method should resolve the link and return a Promise with the resolved object.  An additional
@@ -385,7 +405,7 @@ export namespace ActivityStreams {
       @IsOptional()
       @Expose()
       @LinkTransform
-      public attachment?: ASLink | ResolvingArray<ASLink>;
+      public attachment?: ASObjectOrLink | ASObjectOrLink[];
 
       /**
        * Identifies one or more entities to which this object is attributed. The attributed entities might not be Actors. For instance, an object might be attributed to the completion of another activity.
