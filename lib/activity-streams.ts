@@ -201,12 +201,6 @@ export namespace ActivityStreams {
       /**
        * The resolved object, if the link has been resolved.
        */
-      // @Exclude()
-      // protected _resolved: any = undefined;
-
-      // @Exclude()
-      // protected _hrefOnly = false;
-
       constructor(...args: any[]) {
         super(...args);
 
