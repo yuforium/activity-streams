@@ -1,7 +1,7 @@
-import { plainToClass } from 'class-transformer';
 import { IsString, validate } from 'class-validator';
 import 'reflect-metadata';
-import { ActivityStreams, Note } from '../src';
+import { ActivityStreams, Note } from '../lib';
+import { IsOptional } from '../lib/decorator/is-optional';
 
 // const toASObject = ActivityStreams.transform("Object");
 
@@ -49,23 +49,19 @@ describe('dynamic composition', () => {
   const transform = ActivityStreams.transform;
 
   class TestClass extends ActivityStreams.object('TestClass') {
-    @IsString({each: true})
+    @IsString()
     testName: string | string[];
   }
   ActivityStreams.transformer.add(TestClass);
 
   it('should transform a composite object', async () => {
-    const vals = {
-      type: ['Note', 'TestClass'],
-      testName: 'test'
-    };
-
     const obj = transform({
       type: ['Note', 'TestClass'],
-      testName: 'test'
+      testName: 'some name'
     });
 
     let errs = await validate(obj);
+    // console.debug('errs are', errs);
     expect(errs).toHaveLength(0);
 
     Object.assign(obj, {id: 'an invalid id', testName: 31337});

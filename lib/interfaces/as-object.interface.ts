@@ -1,11 +1,12 @@
+import { ASRoot } from "./as-base.interface";
 import { ASCollection } from "./as-collection.interface";
-import { ASLink } from "./as-link.interface";
+import { ASLink } from "./as-root";
 
 export type ASObjectOrLink = ASObject | ASLink | string;
 
 export type ASContentMap = {[key: string]: string}[];
 
-export interface ASObject {
+export interface ASObject extends ASRoot {
   '@context'?: string | string[];
   id?: string;
   type: string | string[];

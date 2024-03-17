@@ -1,7 +1,7 @@
-import { ClassTransformOptions, Expose, plainToInstance, Transform } from "class-transformer";
-import { registerDecorator, getMetadataStorage, IsInt, IsMimeType, IsNotEmpty, IsNumber, IsObject, IsPositive, IsRFC3339, IsString, IsUrl, Min, ValidateIf, ValidateNested } from "class-validator";
+import { ClassTransformOptions, Exclude, Expose, plainToInstance, Transform } from "class-transformer";
+import { IsInt, IsMimeType, IsNotEmpty, IsNumber, IsObject, IsPositive, IsRFC3339, IsString, IsUrl, Min } from "class-validator";
 import { IsOptional } from "./decorator/is-optional";
-import { ASLink } from "./interfaces/as-link.interface";
+import { ASLink } from "./interfaces/as-root";
 import { ASObject, ASObjectOrLink } from "./interfaces/as-object.interface";
 import { ASCollection } from "./interfaces/as-collection.interface";
 import { Constructor } from "./util/constructor";
@@ -11,6 +11,7 @@ import { ASDocument } from "./interfaces/as-document.interface";
 import { ASIntransitiveActivity } from "./interfaces/as-intransitive-activity.interface";
 import { ContentMap } from "./util/content-map";
 import { IsNotEmptyArray } from "./util/is-not-empty-array";
+import { ASRoot } from "./interfaces/as-base.interface";
 
 /**
  * Base collection of ActivityStreams objects.
@@ -18,7 +19,7 @@ import { IsNotEmptyArray } from "./util/is-not-empty-array";
 export namespace ActivityStreams {
   /**
    * Interface for any class that can be transformed into an ActivityStreams object.
-   * At this time there are no requirements, but they may be added in the future.
+   * Currently there are no requirements, but they may be added in the future.
    */
   export interface ASTransformable {
   };
@@ -26,6 +27,61 @@ export namespace ActivityStreams {
   export interface ASConstructor<T> extends Constructor<T> {
     type: string | string[];
   };
+
+  /**
+   * Interface for the resolver.  This is a chain of responsibility pattern.
+   */
+  export interface ResolveHandler {
+    setNext(handler: ResolveHandler): ResolveHandler;
+    handle(request: string): Promise<ASObject | ASLink | string>;
+  }
+
+  /**
+   * Base resolver class, which implementations can extend to create their own resolvers.
+   */
+  export abstract class Resolver implements ResolveHandler {
+    private next: ResolveHandler;
+
+    setNext(handler: ResolveHandler): ResolveHandler {
+      this.next = handler;
+      return handler;
+    }
+
+    async handle(request: string): Promise<ASObject | ASLink | string> {
+      if (this.next) {
+        return this.next.handle(request);
+      }
+
+      return request;
+    }
+  }
+
+  /**
+   * A simple HTTP fetch resolver that uses fetch to resolve URLs.
+   */
+  export class HttpFetchResolver extends Resolver {
+    async handle(href: string) {
+      try {
+        const response = await fetch(href, {headers: {'Accept': 'application/json'}});
+
+        if (response.status !== 200) {
+          throw new Error(`Failed to resolve ${href}`);
+        }
+
+        return transform(await response.json());
+      }
+      catch (e) {
+        return super.handle(href);
+      }
+    }
+  }
+
+  class DefaultResolver extends Resolver { }
+
+  /**
+   * An array of Resolvers that are used to resolve URLs.
+   */
+  export const resolver: Resolver = new DefaultResolver();
 
   /**
    * Default registered types.  When new types are added via the ActivityStreams.object() or ActivityStreams.link() methods, they are
@@ -55,11 +111,23 @@ export namespace ActivityStreams {
       constructors.forEach(ctor => this.types[ctor.type as string] = ctor);
     }
 
-    transform({value, options}: {value: {type: string | string[], [k: string]: any}, options?: ClassTransformOptions}): any {
+    transform(
+      {value, options}: {value: {type: string | string[], [k: string]: any}, options?: ClassTransformOptions},
+      transformOptions?: {transformLinks?: boolean}
+    ): any {
       options = Object.assign({excludeExtraneousValues: true, exposeUnsetFields: false}, options);
+      transformOptions = Object.assign({transformLinks: false}, transformOptions);
 
       if (Array.isArray(value)) {
-        return value.map(v => this.transform({value: v, options}));
+        const a: ASRoot[] = [];
+        value.forEach(v => a.push(this.transform({value: v, options}, transformOptions)));
+        return a;
+      }
+
+      if (typeof value === 'string' && transformOptions.transformLinks) {
+        const link = new this.types['Link'](value);
+        // const link = plainToInstance(this.types['Link'], {type: 'Link', href: value}, options);
+        return link;
       }
 
       if (typeof value !== 'object') {
@@ -67,6 +135,7 @@ export namespace ActivityStreams {
       }
 
       if (typeof value.type === 'string') {
+        console.debug('not this condition', value.type);
         if (this.types[value.type]) {
           return plainToInstance(this.types[value.type], value, options);
         }
@@ -82,11 +151,7 @@ export namespace ActivityStreams {
         const symbol = Symbol.for(types.join('-'));
 
         if (!types.length) {
-          if (this.options.alwaysReturnValueOnTransform) {
-            return value;
-          }
-
-          return undefined;
+          return this.options.alwaysReturnValueOnTransform ? value : undefined;
         }
 
         let ctor = this.composites[symbol];
@@ -101,12 +166,9 @@ export namespace ActivityStreams {
           this.composites[symbol] = cls;
 
           if (!this.options.composeWithMissingConstructors && ctors.length !== types.length) {
-            if (this.options.alwaysReturnValueOnTransform) {
-              return value;
-            }
-
-            return undefined;
+            return this.options.alwaysReturnValueOnTransform ? value : undefined;
           }
+          console.log(options);
 
           return plainToInstance(cls, value, options);
         }
@@ -167,8 +229,82 @@ export namespace ActivityStreams {
     class ActivityStreamsLink extends Base implements ASLink {
       static readonly type = namedType;
 
+      /**
+       * The resolved object, if the link has been resolved.
+       */
+      constructor(...args: any[]) {
+        super(...args);
+
+        const [initValues] = args;
+
+        let _resolved: undefined | ASObjectOrLink;
+        let _asLinkOnly = false;
+
+        if (typeof initValues === 'string') {
+          this.href = initValues;
+          _asLinkOnly = true;
+        }
+        else {
+          Object.assign(this, initValues);
+        }
+
+        Object.defineProperties(this, {
+          _asLinkOnly: {
+            value: _asLinkOnly,
+            enumerable: false
+          },
+          resolve: {
+            value: async function resolve(customResolver?: ResolveHandler): Promise<ASObjectOrLink> {
+              if (this.href === undefined) {
+                throw new Error('Link href is not set');
+              }
+
+              // If the link has already been resolved, return the resolved object (skip if custom resolver is provided)
+              if (!customResolver && _resolved) {
+                return _resolved;
+              }
+
+              _resolved = await (customResolver || resolver).handle(this.href);
+
+              return _resolved;
+            },
+            enumerable: false
+          },
+          toJSON: {
+            value: function toJSON() {
+              if (this._asLinkOnly) {
+                return this.href;
+              }
+
+              return this;
+            },
+            enumerable: false
+          },
+          toString: {
+            value: function toString() {
+              if (_asLinkOnly) {
+                return this.href;
+              }
+
+              return this;
+            },
+            enumerable: false
+          }
+        });
+      }
+
+      /**
+       * Resolves the link and returns the resolved object.
+       * @param customResolver A custom resolver to use for this link.  Runs even if the Link had been previously resolved.
+       */
+      resolve: (customResolver?: ResolveHandler) => Promise<ASObjectOrLink>;
+
+      toJSON: () => any;
+      toString: () => any;
+
       @IsString({each: true})
       @IsOptional()
+      @Expose()
       '@context'?: string | string[] = 'https://www.w3.org/ns/activitystreams';
 
       @IsString()
@@ -178,44 +314,62 @@ export namespace ActivityStreams {
 
       @IsString()
       @IsUrl()
+      @Expose()
       href: string;
 
       @IsString()
       @IsOptional()
+      @Expose()
       id?: string;
 
       @IsString()
       @IsOptional()
+      @Expose()
       name?: string | string[];
 
       @IsString()
       @IsOptional()
+      @Expose()
       hreflang?: string;
 
       @IsString()
       @IsOptional()
       @IsMimeType()
+      @Expose()
       mediaType?: string;
 
       @IsString()
       @IsOptional()
+      @Expose()
       rel?: string|string[];
 
       @IsOptional()
       @IsNumber()
       @IsInt()
       @IsPositive()
+      @Expose()
       height?: number;
 
       @IsOptional()
       @IsNumber()
       @IsInt()
       @IsPositive()
+      @Expose()
       width?: number;
     }
 
     return ActivityStreamsLink;
   }
+
+  export const linkTransformOptions = {
+    transformLinks: true,
+    type: 'Link'
+  };
+
+  /**
+   * A built-in decorator that uses the {@link ActivityStreams.transformer} to transform a plain object to an ActivityStreams object, and also transforms any links to the {@link ActivityStreamsLink} class.
+   */
+  export const LinkTransform = Transform(params => transformer.transform(params, {transformLinks: true}));
 
   /**
    * Create a new class based on the ActivityStreams Object type.
@@ -230,6 +384,10 @@ export namespace ActivityStreams {
 
     class ActivityStreamsObject extends Base implements ASObject {
       static readonly type: string | string[] = namedType;
+
+      async resolve(): Promise<any> {
+        return this;
+      }
 
       @IsString()
       @IsOptional()
@@ -254,7 +412,7 @@ export namespace ActivityStreams {
        */
       @IsOptional()
       @Expose()
-      @Transform(params => transformer.transform(params))
+      @LinkTransform
       public attachment?: ASObjectOrLink | ASObjectOrLink[];
 
       /**
@@ -263,6 +421,7 @@ export namespace ActivityStreams {
        */
       @IsOptional()
       @Expose()
+      @LinkTransform
       public attributedTo?: ASObjectOrLink | ASObjectOrLink[];
 
       /**
@@ -272,6 +431,7 @@ export namespace ActivityStreams {
        */
       @IsOptional()
       @Expose()
+      @LinkTransform
       audience?: ASObjectOrLink | ASObjectOrLink[];
 
       /**
@@ -295,6 +455,7 @@ export namespace ActivityStreams {
        */
       @IsOptional()
       @Expose()
+      @LinkTransform
       context?: ASObjectOrLink | ASObjectOrLink[];
 
       /**
@@ -337,26 +498,32 @@ export namespace ActivityStreams {
 
       @IsOptional()
       @Expose()
+      @LinkTransform
       generator?: ASObjectOrLink | ASObjectOrLink[];
 
       @IsOptional()
       @Expose()
+      @LinkTransform
       icon?: ASObjectOrLink | ASObjectOrLink[];
 
       @IsOptional()
       @Expose()
+      @LinkTransform
       image?: ASObjectOrLink | ASObjectOrLink[];
 
       @IsOptional()
       @Expose()
+      @LinkTransform
       inReplyTo?: ASObjectOrLink | ASObjectOrLink[];
 
       @IsOptional()
       @Expose()
+      @LinkTransform
       location?: ASObjectOrLink | ASObjectOrLink[];;
 
       @IsOptional()
       @Expose()
+      @LinkTransform
       preview?: ASObjectOrLink | ASObjectOrLink[];
 
       /**
@@ -382,6 +549,7 @@ export namespace ActivityStreams {
 
       @IsOptional()
       @Expose()
+      @LinkTransform
       replies?: ASCollection;
 
       @IsOptional()
@@ -406,6 +574,7 @@ export namespace ActivityStreams {
        */
       @IsOptional()
       @Expose()
+      @LinkTransform
       tag?: ASObjectOrLink | ASObjectOrLink[];
 
       @IsOptional()
@@ -416,22 +585,27 @@ export namespace ActivityStreams {
 
       @IsOptional()
       @Expose()
+      @LinkTransform
       url?: ASLink | string | (ASLink | string)[];
 
       @IsOptional()
       @Expose()
+      @LinkTransform
       to?: ASObjectOrLink | ASObjectOrLink[];
 
       @IsOptional()
       @Expose()
+      @LinkTransform
       bto?: ASObjectOrLink | ASObjectOrLink[];
 
       @IsOptional()
       @Expose()
+      @LinkTransform
       cc?: ASObjectOrLink | ASObjectOrLink[];
 
       @IsOptional()
       @Expose()
+      @LinkTransform
       bcc?: ASObjectOrLink | ASObjectOrLink[];
 
       @IsOptional()
@@ -478,26 +652,32 @@ export namespace ActivityStreams {
     class ActivityStreamsActivity extends object(namedType, Base) implements ASActivity {
       @IsOptional()
       @Expose()
+      @LinkTransform
       actor?: ASObjectOrLink;
 
       @IsOptional()
       @Expose()
+      @LinkTransform
       object?: ASObjectOrLink;
 
       @IsOptional()
       @Expose()
+      @LinkTransform
       target?: ASObjectOrLink;
 
       @IsOptional()
       @Expose()
+      @LinkTransform
       result?: ASObjectOrLink;
 
       @IsOptional()
       @Expose()
+      @LinkTransform
       origin?: ASObjectOrLink;
 
       @IsOptional()
       @Expose()
+      @LinkTransform
       instrument?: ASObjectOrLink;
     }
 
@@ -540,18 +720,22 @@ export namespace ActivityStreams {
 
       @Expose()
       @IsOptional()
+      @LinkTransform
       current?: ASCollectionPage | ASLink | string
 
       @Expose()
       @IsOptional()
+      @LinkTransform
       first?: ASCollectionPage | ASLink | string
 
       @Expose()
       @IsOptional()
+      @LinkTransform
       last?:  ASCollectionPage | ASLink | string
 
       @Expose()
       @IsOptional()
+      @LinkTransform
       items: ASObjectOrLink[];
     }
 
@@ -569,14 +753,17 @@ export namespace ActivityStreams {
     class ActivityStreamsCollectionPage extends collection(namedType, Base) {
       @Expose()
       @IsOptional()
+      @LinkTransform
       partOf?: ASCollection | ASLink;
 
       @Expose()
       @IsOptional()
+      @LinkTransform
       next?: ASCollectionPage | ASLink;
 
       @Expose()
       @IsOptional()
+      @LinkTransform
       prev?: ASCollectionPage | ASLink;
     }
 

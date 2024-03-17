@@ -1,3 +1,7 @@
+import { ActivityStreams } from './activity-streams';
+import { Note } from './objects';
+
+// export * from './activity-streams';
 export * from './activity-streams';
 export * from './objects';
 export * from './activities';
