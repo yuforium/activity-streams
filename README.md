@@ -130,3 +130,35 @@ note.content = "If you can dodge a wrench, you can dodge a ball.";
 
 validate(note); // works
 ```
+
+## Resolving Links
+ActivityStreams frequently uses link references instead for properties instead of explicitly defined data structures.  For example, the following Object contains a link reference for its `attributedTo` field:
+
+```json
+{
+  "type": "Note",
+  "content": "Oh, I don't think I'm a lot dumber than you think that I thought that I thought I was once.",
+  "attributedTo": "https://yuforium.com/users/white-goodman"
+}
+```
+
+You can resolve Links to their respective classes using the `resolve()` method on the link.
+
+```typescript
+import 'reflect-metadata';
+import { ActivityStreams, Link, Note } from '../lib';
+
+// Use the built-in HTTP resolver.  You can also define your own resolver by extending the `ActivityStreams.Resolver` class.
+ActivityStreams.resolver.setNext(new ActivityStreams.HttpFetchResolver());
+
+const l = new Link('https://yuforium.dev/users/chris');
+
+l.resolve().then(person => console.log(person));
+// Person {
+//  '@context': 'https://www.w3.org/ns/activitystreams',
+//  type: 'Person',
+//  id: 'https://yuforium.dev/users/chris'
+//}
+```
+
+Note that the `resolve()` method returns a Promise, so you will need to use `await` or `.then()` to access the resolved object.  Additionally, `resolve()` works on all of this library's built-in classes, not just `Link`, so no type checking is required to use it.

@@ -18,18 +18,18 @@ describe('basic id validation', () => {
     obj.id = 'this is an invalid id';
     errors = await validate(obj);
     expect(errors).toHaveLength(1);
-    expect(errors[0].constraints?.isUrl).toBe('id must be an URL address');
+    expect(errors[0].constraints?.isUrl).toBe('id must be a URL address');
 
     // int should not be allowed for type
     Object.assign(obj, {id: 5});
     err = (await validate(obj)).find(e => e.property === 'id');
-    expect(err?.constraints?.isUrl).toBe('id must be an URL address');
+    expect(err?.constraints?.isUrl).toBe('id must be a URL address');
     expect(err?.constraints?.isString).toBe('id must be a string');
 
     // array should not be allowed for type
     Object.assign(obj, {id: ['https://yuforium.com/users/chris/note-123']});
     err = (await validate(obj)).find(e => e.property === 'id');
-    expect(err?.constraints?.isUrl).toBe('id must be an URL address');
+    expect(err?.constraints?.isUrl).toBe('id must be a URL address');
     expect(err?.constraints?.isString).toBe('id must be a string');
   });
 });
