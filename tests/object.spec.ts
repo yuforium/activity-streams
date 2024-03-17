@@ -1,7 +1,6 @@
-import { IsString, validate } from 'class-validator';
 import 'reflect-metadata';
+import { IsString, validate } from 'class-validator';
 import { ActivityStreams, Note } from '../lib';
-import { IsOptional } from '../lib/decorator/is-optional';
 
 // const toASObject = ActivityStreams.transform("Object");
 
@@ -61,7 +60,7 @@ describe('dynamic composition', () => {
     });
 
     let errs = await validate(obj);
-    // console.debug('errs are', errs);
+
     expect(errs).toHaveLength(0);
 
     Object.assign(obj, {id: 'an invalid id', testName: 31337});

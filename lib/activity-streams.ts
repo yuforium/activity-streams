@@ -135,7 +135,6 @@ export namespace ActivityStreams {
       }
 
       if (typeof value.type === 'string') {
-        console.debug('not this condition', value.type);
         if (this.types[value.type]) {
           return plainToInstance(this.types[value.type], value, options);
         }
@@ -168,7 +167,6 @@ export namespace ActivityStreams {
           if (!this.options.composeWithMissingConstructors && ctors.length !== types.length) {
             return this.options.alwaysReturnValueOnTransform ? value : undefined;
           }
-          console.log(options);
 
           return plainToInstance(cls, value, options);
         }
@@ -178,15 +176,27 @@ export namespace ActivityStreams {
       }
     }
 
-    protected composeClass(...constructors: Constructor<any>[]) {
+    // this is broken
+    // see https://stackoverflow.com/questions/61779822/class-validator-decorators-on-typescript-mixin-classes for possible solution
+    protected composeClass(...constructors: Constructor<any>[]): Constructor<any> {
       return constructors.reduce((prev: Constructor<any>, curr: Constructor<any>) => {
-        return this.mixinClass(prev, curr);
+        const combined = class extends prev { };
+        const instance = new curr;
+
+        Reflect.ownKeys(instance).forEach(name => {
+          Reflect.defineProperty(
+            combined.prototype,
+            name,
+            Reflect.getOwnPropertyDescriptor(instance, name) || Object.create(null)
+          );
+        });
+
+        return combined;
       }, class {});
     }
 
     protected mixinClass(target: Constructor<any>, source: Constructor<any>): Constructor<any> {
-      const cls = class extends target {
-      }
+      const cls = class extends target { };
 
       Object.getOwnPropertyNames(source.prototype).forEach((name) => {
         Object.defineProperty(
