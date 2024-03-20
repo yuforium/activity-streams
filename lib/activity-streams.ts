@@ -1,7 +1,7 @@
-import { ClassTransformOptions, Exclude, Expose, plainToInstance, Transform } from "class-transformer";
+import { ClassTransformOptions, Exclude, Expose, plainToInstance, Transform, TransformationType } from "class-transformer";
 import { IsInt, IsMimeType, IsNotEmpty, IsNumber, IsObject, IsPositive, IsRFC3339, IsString, IsUrl, Min } from "class-validator";
 import { IsOptional } from "./decorator/is-optional";
-import { ASLink } from "./interfaces/as-root";
+import { ASLink } from "./interfaces/as-link.interface";
 import { ASObject, ASObjectOrLink } from "./interfaces/as-object.interface";
 import { ASCollection } from "./interfaces/as-collection.interface";
 import { Constructor } from "./util/constructor";
@@ -11,7 +11,7 @@ import { ASDocument } from "./interfaces/as-document.interface";
 import { ASIntransitiveActivity } from "./interfaces/as-intransitive-activity.interface";
 import { ContentMap } from "./util/content-map";
 import { IsNotEmptyArray } from "./util/is-not-empty-array";
-import { ASRoot } from "./interfaces/as-base.interface";
+import { ASRoot } from "./interfaces/as-root.interface";
 
 /**
  * Base collection of ActivityStreams objects.
@@ -224,6 +224,34 @@ export namespace ActivityStreams {
     return transformer.transform({value, options: {exposeUnsetFields: false}});
   }
 
+  function root<TBase extends Constructor<ASTransformable>>(baseType: string, Base?: TBase | undefined): Constructor<any> {
+    if (Base === undefined) {
+      Base = class {} as TBase;
+    }
+
+    class ActivityStreamsRoot extends Base {
+      _asmeta: {
+        baseType: string
+      }
+
+      constructor(...args: any[]) {
+        super(...args);
+
+        Object.defineProperties(this, {
+          _asmeta: {
+            value: {
+              baseType: baseType
+            },
+            enumerable: false,
+            writable: false
+          }
+        });
+      }
+    }
+
+    return ActivityStreamsRoot;
+  }
+
   /**
    * Create a new class based on the ActivityStreams Link type.
    *
@@ -236,7 +264,7 @@ export namespace ActivityStreams {
       Base = class {} as TBase;
     }
 
-    class ActivityStreamsLink extends Base implements ASLink {
+    class ActivityStreamsLink extends root('link', Base) implements ASLink {
       static readonly type = namedType;
 
       /**
@@ -244,6 +272,8 @@ export namespace ActivityStreams {
        */
       constructor(...args: any[]) {
         super(...args);
+
+        console.log('construct with ', args[0]);
 
         const [initValues] = args;
 
@@ -259,6 +289,11 @@ export namespace ActivityStreams {
         }
 
         Object.defineProperties(this, {
+          _resolved: {
+            value: 'is this something?',
+            enumerable: false,
+            writable: true
+          },
           _asLinkOnly: {
             value: _asLinkOnly,
             enumerable: false
@@ -270,23 +305,31 @@ export namespace ActivityStreams {
               }
 
               // If the link has already been resolved, return the resolved object (skip if custom resolver is provided)
-              if (!customResolver && _resolved) {
-                return _resolved;
-              }
-
+              // if (!customResolver && this._resolved) {
+              //   return this._resolved;
+              // }
               _resolved = await (customResolver || resolver).handle(this.href);
-
+              // console.log('setting resolved to', _resolved);
+              // console.log(this.resolvedValue(), 'is the resolved value');
               return _resolved;
             },
             enumerable: false
           },
+          resolvedValue: {
+            value: function resolvedValue() {
+              return _resolved;
+            }
+          },
           toJSON: {
             value: function toJSON() {
-              if (this._asLinkOnly) {
+              if (_resolved && typeof _resolved !== 'string') {
+                return transform(_resolved);
+              }
+              if (_asLinkOnly) {
                 return this.href;
               }
-
-              return this;
+              // console.log(this.resolvedValue(), "IS NOW THE VALUE")
+              return _resolved || this;
             },
             enumerable: false
           },
@@ -307,7 +350,7 @@ export namespace ActivityStreams {
        * Resolves the link and returns the resolved object.
        * @param customResolver A custom resolver to use for this link.  Runs even if the Link had been previously resolved.
        */
-      resolve: (customResolver?: ResolveHandler) => Promise<ASObjectOrLink>;
+      // resolve: (customResolver?: ResolveHandler) => Promise<ASObjectOrLink>;
 
       toJSON: () => any;
       toString: () => any;
@@ -379,7 +422,13 @@ export namespace ActivityStreams {
   /**
    * A built-in decorator that uses the {@link ActivityStreams.transformer} to transform a plain object to an ActivityStreams object, and also transforms any links to the {@link ActivityStreamsLink} class.
    */
-  export const LinkTransform = Transform(params => transformer.transform(params, {transformLinks: true}));
+  export const LinkTransform = Transform(params => {
+    if (params.type === TransformationType.CLASS_TO_PLAIN && typeof params.value === 'object' && params.value.type === 'Link') {
+      return params.value.toJSON();
+    }
+
+    return transformer.transform(params, {transformLinks: true});
+  });
 
   /**
    * Create a new class based on the ActivityStreams Object type.
@@ -392,10 +441,10 @@ export namespace ActivityStreams {
       Base = class {} as TBase;
     }
 
-    class ActivityStreamsObject extends Base implements ASObject {
+    class ActivityStreamsObject extends root('object', Base) implements ASObject {
       static readonly type: string | string[] = namedType;
 
-      async resolve(): Promise<any> {
+      async resolve(_resolver?: Resolver): Promise<any> {
         return this;
       }
 
@@ -745,7 +794,6 @@ export namespace ActivityStreams {
 
       @Expose()
       @IsOptional()
-      @LinkTransform
       items: ASObjectOrLink[];
     }
 

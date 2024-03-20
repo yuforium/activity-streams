@@ -1,4 +1,4 @@
-import { ASRoot } from "./as-base.interface";
+import { ASRoot } from "./as-root.interface";
 
 export interface ASLink extends ASRoot {
   href: string;

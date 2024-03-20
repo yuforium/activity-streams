@@ -1,6 +1,4 @@
 import { ActivityStreams } from "./activity-streams";
-import { ASLink } from "./interfaces/as-root";
-import { Constructor } from "./util/constructor";
 
 /**
  * A Link describes a qualified, indirect reference to another resource that is closely related to the conceptual model of Links as established in [RFC5988]. The properties of the Link object are not the properties of the referenced resource, but are provided as hints for rendering agents to understand how to make use of the resource. For example, height and width might represent the desired rendered size of a referenced image, rather than the actual pixel dimensions of the referenced image.

@@ -1,6 +1,6 @@
-import { ASRoot } from "./as-base.interface";
+import { ASRoot } from "./as-root.interface";
 import { ASCollection } from "./as-collection.interface";
-import { ASLink } from "./as-root";
+import { ASLink } from "./as-link.interface";
 
 export type ASObjectOrLink = ASObject | ASLink | string;
 
