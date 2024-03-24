@@ -1,4 +1,4 @@
-import { ClassTransformOptions, Exclude, Expose, plainToInstance, Transform, TransformationType } from "class-transformer";
+import { ClassTransformOptions, Exclude, Expose, plainToInstance, Transform, TransformationType, TransformFnParams } from "class-transformer";
 import { IsInt, IsMimeType, IsNotEmpty, IsNumber, IsObject, IsPositive, IsRFC3339, IsString, IsUrl, Min } from "class-validator";
 import { IsOptional } from "./decorator/is-optional";
 import { ASLink } from "./interfaces/as-link.interface";
@@ -21,12 +21,15 @@ export namespace ActivityStreams {
    * Interface for any class that can be transformed into an ActivityStreams object.
    * Currently there are no requirements, but they may be added in the future.
    */
-  export interface ASTransformable {
-  };
+  export interface ASTransformable { };
 
   export interface ASConstructor<T> extends Constructor<T> {
     type: string | string[];
   };
+
+  export interface ASResolvable {
+    resolve(_resolver?: ActivityStreams.ResolveHandler): Promise<ASObjectOrLink>;
+  }
 
   /**
    * Interface for the resolver.  This is a chain of responsibility pattern.
@@ -126,7 +129,6 @@ export namespace ActivityStreams {
 
       if (typeof value === 'string' && transformOptions.transformLinks) {
         const link = new this.types['Link'](value);
-        // const link = plainToInstance(this.types['Link'], {type: 'Link', href: value}, options);
         return link;
       }
 
@@ -259,7 +261,7 @@ export namespace ActivityStreams {
    * @param Base Base class to derive from.  Defaults to ASTransformable.
    * @returns ASConstructor<ASLink>
    */
-  export function link<TBase extends Constructor<ASTransformable>>(namedType: string, Base?: TBase | undefined): ASConstructor<ASLink> {
+  export function link<TBase extends Constructor<ASTransformable>>(namedType: string, Base?: TBase | undefined): ASConstructor<ASLink & ASResolvable> {
     if (Base === undefined) {
       Base = class {} as TBase;
     }
@@ -273,69 +275,21 @@ export namespace ActivityStreams {
       constructor(...args: any[]) {
         super(...args);
 
-        console.log('construct with ', args[0]);
-
         const [initValues] = args;
-
-        let _resolved: undefined | ASObjectOrLink;
-        let _asLinkOnly = false;
 
         if (typeof initValues === 'string') {
           this.href = initValues;
-          _asLinkOnly = true;
+          this._asmeta._href_only = true;
         }
         else {
           Object.assign(this, initValues);
+          this._asmeta._href_only = false;
         }
 
         Object.defineProperties(this, {
-          _resolved: {
-            value: 'is this something?',
-            enumerable: false,
-            writable: true
-          },
-          _asLinkOnly: {
-            value: _asLinkOnly,
-            enumerable: false
-          },
-          resolve: {
-            value: async function resolve(customResolver?: ResolveHandler): Promise<ASObjectOrLink> {
-              if (this.href === undefined) {
-                throw new Error('Link href is not set');
-              }
-
-              // If the link has already been resolved, return the resolved object (skip if custom resolver is provided)
-              // if (!customResolver && this._resolved) {
-              //   return this._resolved;
-              // }
-              _resolved = await (customResolver || resolver).handle(this.href);
-              // console.log('setting resolved to', _resolved);
-              // console.log(this.resolvedValue(), 'is the resolved value');
-              return _resolved;
-            },
-            enumerable: false
-          },
-          resolvedValue: {
-            value: function resolvedValue() {
-              return _resolved;
-            }
-          },
-          toJSON: {
-            value: function toJSON() {
-              if (_resolved && typeof _resolved !== 'string') {
-                return transform(_resolved);
-              }
-              if (_asLinkOnly) {
-                return this.href;
-              }
-              // console.log(this.resolvedValue(), "IS NOW THE VALUE")
-              return _resolved || this;
-            },
-            enumerable: false
-          },
           toString: {
             value: function toString() {
-              if (_asLinkOnly) {
+              if (this._asmeta._asLinkOnly) {
                 return this.href;
               }
 
@@ -350,9 +304,30 @@ export namespace ActivityStreams {
        * Resolves the link and returns the resolved object.
        * @param customResolver A custom resolver to use for this link.  Runs even if the Link had been previously resolved.
        */
-      // resolve: (customResolver?: ResolveHandler) => Promise<ASObjectOrLink>;
+      async resolve(customResolver?: ResolveHandler) {
+        if (this.href === undefined) {
+          throw new Error('Link href is not set');
+        }
 
-      toJSON: () => any;
+        this._asmeta._resolved = await (customResolver || resolver).handle(this.href);
+
+        return this._asmeta._resolved;
+      }
+
+      toJSON() {
+        const {_resolved, _href_only} = this._asmeta;
+
+        if (_resolved && typeof _resolved !== 'string') {
+          return transform(_resolved);
+        }
+
+        if (_href_only) {
+          return this.href;
+        }
+
+        return _resolved || this;
+      }
+
       toString: () => any;
 
       @IsString({each: true})
@@ -414,21 +389,39 @@ export namespace ActivityStreams {
     return ActivityStreamsLink;
   }
 
+  export class PublicLink extends link('Link') { };
+
   export const linkTransformOptions = {
     transformLinks: true,
     type: 'Link'
   };
 
-  /**
-   * A built-in decorator that uses the {@link ActivityStreams.transformer} to transform a plain object to an ActivityStreams object, and also transforms any links to the {@link ActivityStreamsLink} class.
-   */
-  export const LinkTransform = Transform(params => {
-    if (params.type === TransformationType.CLASS_TO_PLAIN && typeof params.value === 'object' && params.value.type === 'Link') {
-      return params.value.toJSON();
+  function linkTransformFn(params: TransformFnParams): any {
+    const {type, value} = params;
+
+    if (Array.isArray(value)) {
+      return value.map(v => linkTransformFn({...params, value: v}));
+    }
+
+    /**
+     * If the value is an object and has a _asmeta.baseType of 'link', return the value as a JSON object.  This will return the resolved value if the link has been resolved.
+     */
+    if (type === TransformationType.CLASS_TO_PLAIN && typeof value === 'object') {
+      if (value._asmeta?.baseType === 'link') {
+        return params.value.toJSON();
+      }
+      if (value._asmeta?.baseType === 'object') {
+        return value;
+      }
     }
 
     return transformer.transform(params, {transformLinks: true});
-  });
+  };
+
+  /**
+   * A built-in decorator that uses the {@link ActivityStreams.transformer} to transform a plain object to an ActivityStreams object, and also transforms any links to the {@link ActivityStreamsLink} class.
+   */
+  export const LinkTransform = Transform(linkTransformFn);
 
   /**
    * Create a new class based on the ActivityStreams Object type.
@@ -436,7 +429,7 @@ export namespace ActivityStreams {
    * @param Base Base class to derive from.  Defaults to ASTransformable.
    * @returns ASConstructor<ASObject>
    */
-  export function object<TBase extends Constructor<ASTransformable> = Constructor<ASTransformable>>(namedType: string, Base?: TBase | undefined): ASConstructor<ASObject> {
+  export function object<TBase extends Constructor<ASTransformable> = Constructor<ASTransformable>>(namedType: string, Base?: TBase | undefined): ASConstructor<ASObject & ASResolvable> {
     if (Base === undefined) {
       Base = class {} as TBase;
     }
@@ -444,7 +437,7 @@ export namespace ActivityStreams {
     class ActivityStreamsObject extends root('object', Base) implements ASObject {
       static readonly type: string | string[] = namedType;
 
-      async resolve(_resolver?: Resolver): Promise<any> {
+      async resolve(_resolver?: ResolveHandler): Promise<any> {
         return this;
       }
 
@@ -690,10 +683,7 @@ export namespace ActivityStreams {
    * @returns ASConstructor<ASDocument>
    */
   export function document<TBase extends Constructor<ASTransformable>>(namedType: string, Base?: TBase | undefined): ASConstructor<ASDocument> {
-    class ActivityStreamsDocument extends object(namedType, Base) implements ASDocument {
-    }
-
-    return ActivityStreamsDocument;
+    return class ActivityStreamsDocument extends object(namedType, Base) implements ASDocument { };
   }
 
   /**

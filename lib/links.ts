@@ -9,7 +9,7 @@ import { ActivityStreams } from "./activity-streams";
  *
  * https://www.w3.org/TR/activitystreams-core/#link
  */
-export class Link extends ActivityStreams.link('Link') {};
+export class Link extends ActivityStreams.link('Link') { };
 ActivityStreams.transformer.add(Link);
 
 /**

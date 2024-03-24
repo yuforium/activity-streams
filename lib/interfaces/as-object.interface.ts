@@ -1,6 +1,7 @@
 import { ASRoot } from "./as-root.interface";
 import { ASCollection } from "./as-collection.interface";
 import { ASLink } from "./as-link.interface";
+import { ActivityStreams } from "../activity-streams";
 
 export type ASObjectOrLink = ASObject | ASLink | string;
 
